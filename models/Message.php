@@ -1,5 +1,4 @@
 <?php
-<?php
 class Message {
     private $conn;
     private $table = 'messages';
