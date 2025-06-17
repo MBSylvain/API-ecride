@@ -100,7 +100,7 @@ class Trajet {
         return false;
     }
 
-    public function read_by_conducteur($utilisateur_id) {
+    public function read_by_user($utilisateur_id) {
         $query = 'SELECT * FROM ' . $this->table . ' WHERE utilisateur_id = ?';
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $utilisateur_id);

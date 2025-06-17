@@ -110,6 +110,7 @@ function handleLogin($data, $utilisateur) {
     if (empty($data->email) || empty($data->password)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Email et mot de passe sont requis']);
+
         exit;
     }
 
@@ -129,6 +130,8 @@ function handleLogin($data, $utilisateur) {
                 'role' => $_SESSION['role'] ?? 'utilisateur'
             ]
         ]);
+       
+
     } else {
         http_response_code(401); // Unauthorized
         echo json_encode(['success' => false, 'message' => 'Email ou mot de passe incorrect']);

@@ -6,9 +6,8 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Max-Age: 3600");
 
-session_start();
-// Initialiser la variable utilisateur_id depuis la session
-$utilisateur_id = isset($_SESSION['utilisateur_id']) ? $_SESSION['utilisateur_id'] : null;
+//session_start();
+//Recupération des informations de session
 
 
 include_once '../config/Database.php';
@@ -28,14 +27,19 @@ $voiture = new Voiture($db);
 $method = $_SERVER['REQUEST_METHOD'];
 // Récupération des données JSON ou POST selon le format
 $data =json_decode(file_get_contents("php://input"));
-//Récupération de l'action envoyer dans le formulaire
 // Récupérer l'action soit de $_POST soit de $data (JSON)
+$utilisateur_id = null;
+if (isset($_SESSION['utilisateur_id'])) {
+    $utilisateur_id = $_SESSION['utilisateur_id'];
+} elseif (isset($data->utilisateur_id)) {
+    $utilisateur_id = $data->utilisateur_id;
+};
 $action = null;
 if (isset($_POST['action'])) {
     $action = $_POST['action'];
 } elseif (isset($data->action)) {
     $action = $data->action;
-}
+};
 
 // Déterminer la méthode appropriée
 if ($method == 'POST' && $action == 'PUT') {
@@ -46,89 +50,23 @@ if ($method == 'POST' && $action == 'PUT') {
     $method = 'DELETE';
 } else {
     $method = $_SERVER['REQUEST_METHOD'];
-}
-
+};
 // Si l'utilisateur n'est pas authentifié, on renvoie une erreur 401
 if (!$utilisateur_id && ($method == 'POST' || $method == 'PUT')) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Non authentifié']);
     exit;
-}
+};
 
 switch ($method) {
     case 'GET':
-        // Récupérer l'utilisateur_id depuis l'URL
-        $user_id_param = isset($_GET['utilisateur_id']) ? $_GET['utilisateur_id'] : null;
+        // Vérifier d'abord si un voiture_id est fourni dans l'URL
+        // Si oui, on récupère la voiture spécifique    
+        $voiture_id = isset($_GET['voiture_id']) ? $_GET['voiture_id'] : null;
         
-        if ($user_id_param) {
-            // Recherche de voitures par utilisateur
-            $voiture->voiture_id = $user_id_param;
-            $result = $voiture->read_by_user();
-        
-            
-            if ($result && $result->rowCount() > 0) {
-            $voitures = [];
-            
-                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-                    $voitures[] = [
-                        'voiture_id' => $row['voiture_id'],
-                        'modele' => $row['modele'],
-                        'immatriculation' => $row['immatriculation'],
-                        'energie' => $row['energie'],
-                        'couleur' => $row['couleur'],
-                        'date_premiere_immatriculation' => $row['date_premiere_immatriculation'],
-                        'nombre_places' => $row['nombre_places'],
-                        'photo_url' => $row['photo_url'],
-                        'description' => $row['description']
-                    ];
-            }
-            
-                echo json_encode($voitures);
-            } else {
-                http_response_code(404);
-                echo json_encode([]);  // Renvoyer un tableau vide
-            }
-        } else {
-            // Recherche de toutes les voitures
-        $result = $voiture->read();
-        
-        if ($result) {
-            $num = $result->rowCount();
-            
-            if ($num > 0) {
-                $voitures_arr = [
-                    'success' => true,
-                    'count' => $num,
-                    'data' => []
-                ];
-
-                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
-                    $voiture_item = [
-                        'voiture_id' => $row['voiture_id'],
-                        'modele' => $row['modele'],
-                        'immatriculation' => $row['immatriculation'],
-                        'energie' => $row['energie'],
-                        'couleur' => $row['couleur'],
-                        'date_premiere_immatriculation' => $row['date_premiere_immatriculation'],
-                        'nombre_places' => $row['nombre_places'],
-                        'photo_url' => $row['photo_url'],
-                        'description' => $row['description']
-                    ];
-                    
-                    array_push($voitures_arr['data'], $voiture_item);
-                }
-                
-                echo json_encode($voitures_arr);
-            } else {
-                http_response_code(404);
-                echo json_encode([
-                    'success' => false, 
-                    'message' => 'Aucune voiture trouvée'
-                ]);
-            }
-        } elseif ($user_id_param = isset($_GET['voiture_id']) ? $_GET['voiseur_id'] : null) {
+        if ($voiture_id) {
             // Recherche d'une voiture spécifique par ID
-            $voiture->voiture_id = $_GET['voiture_id'];
+            $voiture->voiture_id = $voiture_id;
             if ($voiture->read_single()) {
                 echo json_encode([
                     'success' => true,
@@ -151,13 +89,80 @@ switch ($method) {
                     'message' => 'Voiture non trouvée'
                 ]);
             }
-        } else {
-            http_response_code(500);
-            echo json_encode([
-                'success' => false, 
-                'message' => 'Erreur lors de la récupération des voitures'
-            ]);
         }
+        // Récupérer l'utilisateur_id depuis l'URL si voiture_id n'est pas fourni
+        else if (isset($_GET['utilisateur_id'])) {
+            // Recherche de voitures par utilisateur
+            $voiture->utilisateur_id = $_GET['utilisateur_id'];
+            $result = $voiture->read_by_user();
+            
+            if ($result && $result->rowCount() > 0) {
+                $voitures = [];
+                
+                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                    $voitures[] = [
+                        'voiture_id' => $row['voiture_id'],
+                        'modele' => $row['modele'],
+                        'immatriculation' => $row['immatriculation'],
+                        'energie' => $row['energie'],
+                        'couleur' => $row['couleur'],
+                        'date_premiere_immatriculation' => $row['date_premiere_immatriculation'],
+                        'nombre_places' => $row['nombre_places'],
+                        'photo_url' => $row['photo_url'],
+                        'description' => $row['description']
+                    ];
+                }
+                
+                echo json_encode($voitures);
+            } else {
+                http_response_code(404);
+                echo json_encode([]);  // Renvoyer un tableau vide
+            }
+        } else {
+            // Recherche de toutes les voitures
+            $result = $voiture->read();
+            
+            if ($result) {
+                $num = $result->rowCount();
+                
+                if ($num > 0) {
+                    $voitures_arr = [
+                        'success' => true,
+                        'count' => $num,
+                        'data' => []
+                    ];
+
+                    while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                        $voiture_item = [
+                            'voiture_id' => $row['voiture_id'],
+                            'modele' => $row['modele'],
+                            'immatriculation' => $row['immatriculation'],
+                            'energie' => $row['energie'],
+                            'couleur' => $row['couleur'],
+                            'date_premiere_immatriculation' => $row['date_premiere_immatriculation'],
+                            'nombre_places' => $row['nombre_places'],
+                            'photo_url' => $row['photo_url'],
+                            'description' => $row['description']
+                        ];
+                        
+                        array_push($voitures_arr['data'], $voiture_item);
+                    }
+                    
+                    echo json_encode($voitures_arr);
+                } else {
+                    http_response_code(404);
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => 'Aucune voiture trouvée'
+                    ]);
+                }
+            } else {
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false, 
+                    'message' => 'Erreur lors de la récupération des voitures'
+                ]);
+            }
         }
     break;
 
@@ -200,8 +205,7 @@ switch ($method) {
         
     
     case 'PUT':
-        //$data = json_decode(file_get_contents("php://input"));
-        $data = (object)$_POST;
+        $data = json_decode(file_get_contents("php://input"));
 
         //var_dump($data);
         if (!$data) {
@@ -210,19 +214,33 @@ switch ($method) {
             break;
         }
 
-        $voiture->voiture_id = $data->voiture_id ?? null;
-        $voiture->modele = $data->modele ?? null;
-        $voiture->immatriculation = $data->immatriculation ?? null;
-        $voiture->energie = $data->energie ?? null;
-        $voiture->couleur = $data->couleur ?? null;
-        $voiture->date_premiere_immatriculation = $data->date_premiere_immatriculation ?? null;
-        $voiture->nombre_places = $data->nombre_places ?? null;
-        $voiture->photo_url = $data->photo_url  ?? null;
-        $voiture->description = $data->description ?? null;
-        $voiture->utilisateur_id = $utilisateur_id ?? null;
+    $voiture->voiture_id = isset($_GET['id']) ? $_GET['id'] : $data->voiture_id;
+        $voiture->modele = $data->modele;
+        $voiture->immatriculation = $data->immatriculation;
+        $voiture->energie = $data->energie;
+        $voiture->couleur = $data->couleur;
+        $voiture->date_premiere_immatriculation = $data->date_premiere_immatriculation;
+        $voiture->nombre_places = $data->nombre_places;
+        $voiture->photo_url = $data->photo_url;
+        $voiture->description = $data->description;
+        $voiture->utilisateur_id = $utilisateur_id;
 
         if ($voiture->update()) {
-            echo json_encode(array('message' => 'Voiture mise à jour'));
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Voiture mise à jour avec succès',
+                'voiture_id' => $voiture->voiture_id,
+                'modele' => $voiture->modele,
+                'immatriculation' => $voiture->immatriculation,
+                'energie' => $voiture->energie,
+                'couleur' => $voiture->couleur,
+                'date_premiere_immatriculation' => $voiture->date_premiere_immatriculation,
+                'nombre_places' => $voiture->nombre_places,
+                'photo_url' => $voiture->photo_url,
+                'description' => $voiture->description
+            ]);
+
         } else {
             http_response_code(500);
             echo json_encode(array('message' => 'Échec de la mise à jour'));

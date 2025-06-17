@@ -1,10 +1,11 @@
 <?php
-header('Access-Control-Allow-Origin: *');
-header('Content-Type: application/json');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type, Access-Control-Allow-Methods, Authorization, X-Requested-With');
-
-session_start();
+// En-têtes CORS
+header("Access-Control-Allow-Origin: http://localhost:3000");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Max-Age: 3600");
+//session_start();
 include_once '../config/Database.php';
 include_once '../models/Trajet.php';
 
@@ -23,15 +24,15 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Get the raw input data for PUT and DELETE requests
 $input_data = file_get_contents("php://input");
 $data = json_decode($input_data, true);
-//var_dump($_GET); // Debugging line to check the input data
 
-// For POST requests, use $_POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = $_POST;
+// Vérification de l'ID de l'utilisateur
+if (isset($_SESSION['utilisateur_id'])) {
+    $utilisateur_id = $_SESSION['utilisateur_id'];
+} elseif (isset($_GET['utilisateur_id'])) {
+    $utilisateur_id = $_GET['utilisateur_id'];
+} elseif (isset($data['utilisateur_id'])) {
+    $utilisateur_id = $data['utilisateur_id'];
 }
-
-// Get user ID from session if authenticated
-$utilisateur_id = $_SESSION['utilisateur_id'] ?? null;
 
 // Handle special case for search functionality
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'SEARCH') {
@@ -53,9 +54,9 @@ $date_depart = isset($_GET['date_depart']) ? htmlspecialchars($_GET['date_depart
 // Gestion des différentes méthodes
 switch ($method) {
     case 'GET':
-        if (isset($_GET['id'])) {
-            $trajet->trajet_id = $_GET['id'];
-            if ($trajet->read_single()) {
+        if (isset($utilisateur_id)) {
+            $trajet->trajet_id = $utilisateur_id;
+            if ($trajet->read_by_user($utilisateur_id )) {
                 $trajet_arr = array(
                     'trajet_id' => $trajet->trajet_id,
                     'ville_depart' => $trajet->ville_depart,
@@ -83,9 +84,11 @@ switch ($method) {
         } else {
             $result = $trajet->read();
             if ($result) {
-               // echo json_encode($result);
-                echo json_encode(array('message' => 'Trajets récupérés avec succès')); 
-                header('Location: ../vues/dashboard.php');
+            $trajets_arr = $result;
+            echo json_encode([
+                'message' => 'La totalité desTrajets récupérés avec succès',
+                'data' => $trajets_arr
+            ]);
             } else {
                 http_response_code(500);
                 echo json_encode(array('message' => 'Erreur lors de la récupération des trajets'));
@@ -102,12 +105,10 @@ switch ($method) {
             if ($result) {
                 echo json_encode($result);
                 echo json_encode(array('message' => 'Trajets trouvés avec succès')); 
-                header('Location: ../vues/trajets-disponibles.php');
                 exit;
             } else {
                 http_response_code(404);
                 echo json_encode(array('message' => 'Aucun trajet trouvé'));
-                header('Location: ../vues/trajets-disponibles.php');
                 exit;
             }
         } else {
@@ -153,11 +154,9 @@ switch ($method) {
                 'message' => 'Trajet créé avec succès',
                 'trajet_id' => $trajet->trajet_id
             ]);
-            header('Location: ../vues/dashboard.php');
         } else {
             http_response_code(500);
             echo json_encode(['message' => 'Échec de la création du trajet']);
-            header('Location: ../vues/dashboard.php');
         }
         break;
 
@@ -209,11 +208,9 @@ switch ($method) {
 
         if ($trajet->update()) {
             echo json_encode(array('message' => 'Trajet mis à jour'));
-            header('Location: ../vues/dashboard.php');
         } else {
             http_response_code(500);
             echo json_encode(array('message' => 'Échec de la mise à jour'));
-            header('Location: ../vues/dashboard.php');
         }
         break;
 

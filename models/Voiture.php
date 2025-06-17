@@ -26,19 +26,33 @@ class Voiture {
         return $stmt;
     }
 
-   public function read_single() {
-        $query = 'SELECT * FROM ' . $this->table . ' WHERE voiture_id = ? LIMIT 1';
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $this->voiture_id);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        //Vérification de la recupération des données
-        if(empty($row)) {
-        return  false;
-        } else {
-        return ($row);
-        }
+public function read_single() {
+    $query = 'SELECT * FROM ' . $this->table . ' WHERE voiture_id = ? LIMIT 1';
+    $stmt = $this->conn->prepare($query);
+    $stmt->bindParam(1, $this->voiture_id);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Vérification de la récupération des données
+    if(empty($row)) {
+        return false;
     }
+    
+    // Assigner les valeurs aux propriétés de l'objet
+    $this->marque = $row['marque'];
+    $this->modele = $row['modele'];
+    $this->immatriculation = $row['immatriculation'];
+    $this->energie = $row['energie'];
+    $this->couleur = $row['couleur'];
+    $this->date_premiere_immatriculation = $row['date_premiere_immatriculation'];
+    $this->nombre_places = $row['nombre_places'];
+    $this->photo_url = $row['photo_url'];
+    $this->description = $row['description'];
+    $this->utilisateur_id = $row['utilisateur_id'];
+    
+    // Retourne les données
+    return $row;
+}
 
     public function read_marque() {
         $query = 'SELECT m.* FROM marque m 
