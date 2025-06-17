@@ -54,32 +54,17 @@ $date_depart = isset($_GET['date_depart']) ? htmlspecialchars($_GET['date_depart
 // Gestion des différentes méthodes
 switch ($method) {
     case 'GET':
+        // Si un ID de trajet est fourni, on récupère ce trajet spécifique
         if (isset($utilisateur_id)) {
-            $trajet->trajet_id = $utilisateur_id;
-            if ($trajet->read_by_user($utilisateur_id )) {
-                $trajet_arr = array(
-                    'trajet_id' => $trajet->trajet_id,
-                    'ville_depart' => $trajet->ville_depart,
-                    'ville_arrivee' => $trajet->ville_arrivee,
-                    'adresse_depart' => $trajet->adresse_depart,
-                    'adresse_arrivee' => $trajet->adresse_arrivee,
-                    'date_depart' => $trajet->date_depart,
-                    'heure_depart' => $trajet->heure_depart,
-                    'nombre_places' => $trajet->nombre_places,
-                    'prix' => $trajet->prix,
-                    'description' => $trajet->description,
-                    'bagages_autorises' => $trajet->bagages_autorises,
-                    'fumeur_autorise' => $trajet->fumeur_autorise,
-                    'animaux_autorises' => $trajet->animaux_autorises,
-                    'statut' => $trajet->statut,
-                    'utilisateur_id' => $trajet->utilisateur_id,
-                    'voiture_id' => $trajet->voiture_id,
-                    'date_creation' => $trajet->date_creation
-                );
-                echo json_encode($trajet_arr);
+            $results= $trajet->read_by_user($utilisateur_id);
+            if ($results && !empty($results)) {
+                echo json_encode($results);
             } else {
                 http_response_code(404);
-                echo json_encode(array('message' => 'Trajet non trouvé'));
+                echo json_encode([
+                    'message' => 'Trajet non trouvé',
+                    'error' => true
+                ]);
             }
         } else {
             $result = $trajet->read();
@@ -118,8 +103,8 @@ switch ($method) {
         break;
             
     case 'POST':
-        $data = (object)$_POST;
-        
+        // Récupération des données du formulaire
+        $data = json_decode(file_get_contents("php://input"));
         // Validation
         $required = ['ville_depart', 'ville_arrivee', 'date_depart', 'nombre_places', 'prix', 'voiture_id'];
         foreach ($required as $field) {
@@ -161,37 +146,28 @@ switch ($method) {
         break;
 
     case 'PUT':
-        $data =(array)$_POST;
-        var_dump($data);
-        var_dump($data['trajet_id']);
-        // recuperation de l'id du trajet
-        if (!$data) {
+        // Decode as object, not array (remove the 'true' parameter)
+        $data = json_decode(file_get_contents("php://input"));
+        
+        // Get trajet ID
+        $trajet_id = isset($_GET['trajet_id']) ? $_GET['trajet_id'] : 
+                    (isset($data->trajet_id) ? $data->trajet_id : null);
+        
+        if (!$trajet_id) {
             http_response_code(400);
-            echo json_encode(array('message' => 'Données invalides'));
+            echo json_encode(['message' => 'ID de trajet manquant']);
             break;
         }
-         $trajet= new Trajet($db);
-         // recuperation de l'id du trajet du formulaire
-         $trajet_id= $data['trajet_id'];
-         
-        // Récupération du trajet existant
+        
+        // Set ID and retrieve current trajet
         $trajet->trajet_id = $trajet_id;
-        if (!$trajet->read_single($trajet_id)) {
+        if (!$trajet->read_single()) {
             http_response_code(404);
-            echo json_encode(array('message' => 'Trajet non trouvé'));
+            echo json_encode(['message' => 'Trajet non trouvé']);
             break;
         }
-        $trajets = $trajet;
-        // debugging line to check the input data
-        var_dump(json_encode($trajets));
-       
-        if (!$trajets) {
-            http_response_code(404);
-            echo json_encode(array('message' => 'Trajet non trouvé'));
-            break;
-        }
-
-        // Assignation des valeurs
+        
+        // Update fields (using object notation)
         $trajet->ville_depart = $data->ville_depart ?? $trajet->ville_depart;
         $trajet->ville_arrivee = $data->ville_arrivee ?? $trajet->ville_arrivee;
         $trajet->adresse_depart = $data->adresse_depart ?? $trajet->adresse_depart;
@@ -201,16 +177,45 @@ switch ($method) {
         $trajet->nombre_places = $data->nombre_places ?? $trajet->nombre_places;
         $trajet->prix = $data->prix ?? $trajet->prix;
         $trajet->description = $data->description ?? $trajet->description;
-        $trajet->bagages_autorises = $data->bagages_autorises ?? $trajet->bagages_autorises;
-        $trajet->fumeur_autorise = $data->fumeur_autorise ?? $trajet->fumeur_autorise;
-        $trajet->animaux_autorises = $data->animaux_autorises ?? $trajet->animaux_autorises;
+        $trajet->bagages_autorises = isset($data->bagages_autorises) ? $data->bagages_autorises : $trajet->bagages_autorises;
+        $trajet->fumeur_autorise = isset($data->fumeur_autorise) ? $data->fumeur_autorise : $trajet->fumeur_autorise;
+        $trajet->animaux_autorises = isset($data->animaux_autorises) ? $data->animaux_autorises : $trajet->animaux_autorises;
         $trajet->voiture_id = $data->voiture_id ?? $trajet->voiture_id;
-
+        
+        // Perform update
         if ($trajet->update()) {
-            echo json_encode(array('message' => 'Trajet mis à jour'));
+            // After update, fetch the updated record
+            $trajet->read_single();
+            
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Trajet mis à jour avec succès',
+                'data' => [
+                    'trajet_id' => $trajet->trajet_id,
+                    'ville_depart' => $trajet->ville_depart,
+                    'ville_arrivee' => $trajet->ville_arrivee,
+                    'date_depart' => $trajet->date_depart,
+                    'heure_depart' => $trajet->heure_depart,
+                    'adresse_depart' => $trajet->adresse_depart,
+                    'adresse_arrivee' => $trajet->adresse_arrivee,
+                    'nombre_places' => $trajet->nombre_places,
+                    'prix' => $trajet->prix,
+                    'description' => $trajet->description,
+                    'bagages_autorises' => $trajet->bagages_autorises,
+                    'fumeur_autorise' => $trajet->fumeur_autorise,
+                    'animaux_autorises' => $trajet->animaux_autorises,
+                    'statut' => $trajet->statut,
+                    'utilisateur_id' => $trajet->utilisateur_id,
+                    'voiture_id' => $trajet->voiture_id,
+                    'date_creation' => $trajet->date_creation,
+                    
+                    // Add other fields as needed
+                ]
+            ]);
         } else {
             http_response_code(500);
-            echo json_encode(array('message' => 'Échec de la mise à jour'));
+            echo json_encode(['message' => 'Échec de la mise à jour']);
         }
         break;
 

@@ -105,7 +105,8 @@ class Trajet {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $utilisateur_id);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $results;
     }
 
     public function create() {
@@ -153,8 +154,6 @@ class Trajet {
         $stmt->bindParam(':voiture_id', $this->voiture_id);
 
         if ($stmt->execute()) {
-            // Get the last inserted ID with a direct query
-            $query = "SELECT MAX(trajet_id) as id FROM " . $this->table . " WHERE utilisateur_id = :utilisateur_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':utilisateur_id', $this->utilisateur_id);
             $stmt->execute();
