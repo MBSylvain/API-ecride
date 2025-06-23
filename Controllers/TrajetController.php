@@ -66,6 +66,19 @@ switch ($method) {
                     'error' => true
                 ]);
             }
+            } else if (isset($_GET['trajet_id'])) { 
+            $trajet->trajet_id = $_GET['trajet_id'];
+            $result = $trajet->read_single();
+            if ($result) {
+                echo json_encode([
+                    'message' => 'Trajet récupéré avec succès',
+                    'data' => $result
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'Trajet non trouvé']);
+            }
+
         } else {
             $result = $trajet->read();
             if ($result) {
@@ -81,24 +94,42 @@ switch ($method) {
         }
         break;
     case 'SEARCH':
-        if (isset($_GET['ville_depart']) && isset($_GET['ville_arrivee']) && isset($_GET['date_depart'])) {
-            $ville_depart = $_GET['ville_depart'];
-            $ville_arrivee = $_GET['ville_arrivee'];
-            $date_depart = $_GET['date_depart'];
-
+        // Make all parameters optional by setting defaults
+        $ville_depart = isset($_GET['ville_depart']) ? $_GET['ville_depart'] : null;
+        $ville_arrivee = isset($_GET['ville_arrivee']) ? $_GET['ville_arrivee'] : null;
+        $date_depart = isset($_GET['date_depart']) ? $_GET['date_depart'] : null;
+        
+        // Check if at least one parameter is provided
+        if ($ville_depart !== null || $ville_arrivee !== null || $date_depart !== null) {
             $result = $trajet->filtre_by_searchbar($ville_depart, $ville_arrivee, $date_depart);
-            if ($result) {
+            
+            if ($result && !empty($result)) {
                 echo json_encode($result);
-                echo json_encode(array('message' => 'Trajets trouvés avec succès')); 
-                exit;
             } else {
                 http_response_code(404);
-                echo json_encode(array('message' => 'Aucun trajet trouvé'));
-                exit;
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Aucun trajet trouvé',
+                    'data' => []
+                ]);
             }
         } else {
-            http_response_code(400);
-            echo json_encode(array('message' => 'Paramètres de recherche manquants'));
+            // No parameters provided - return all trips or an error
+            $result = $trajet->read();
+            if ($result) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Tous les trajets récupérés',
+                    'data' => $result
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Aucun trajet disponible',
+                    'data' => []
+                ]);
+            }
         }
         break;
             
@@ -209,7 +240,7 @@ switch ($method) {
                     'utilisateur_id' => $trajet->utilisateur_id,
                     'voiture_id' => $trajet->voiture_id,
                     'date_creation' => $trajet->date_creation,
-                    
+
                     // Add other fields as needed
                 ]
             ]);

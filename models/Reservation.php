@@ -14,6 +14,8 @@ class Reservation {
     public $date_confirmation;
     public $point_rdv;
     public $commentaire;
+    public $bagages;
+    public $date_creation;
 
     public function __construct($db) {
         $this->conn = $db;

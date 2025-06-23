@@ -74,10 +74,6 @@ class Utilisateur {
     
         return $stmt;
     }
-     
-    
-
-   
     
     public function read_voitures() {
         $query = 'SELECT v.* FROM voiture v 

@@ -143,13 +143,13 @@ function handleLogin($data, $utilisateur) {
 switch ($method) {
     case 'GET':
         // Vérification authentification
-        if (!isset($_SESSION['utilisateur_id'])) {
+        if (!isset($_GET['utilisateur_id'])) {
             http_response_code(401);
             echo json_encode(['message' => 'Non authentifié']);
             exit;
         }
 
-        // Lecture par email
+        // Lecture par utulisateur_id
         if (isset($_GET['utilisateur_id'])) {
             $utilisateur->utilisateur_id = sanitize($_GET['utilisateur_id']);
             if ($utilisateur->read_single()) {
@@ -184,6 +184,22 @@ switch ($method) {
             ];
             echo json_encode($response);
             
+            } else if (isset($_GET['conducteur_id'])&& isset($_GET['utilisateur_id'])) {
+            $utilisateur->utilisateur_id = sanitize($_GET['conducteur_id']);
+            if ($utilisateur->read_single());
+            $response = [
+                'utilisateur_id' => $utilisateur->utilisateur_id,
+                'nom' => $utilisateur->nom,
+                'prenom' => $utilisateur->prenom,
+                'email' => $utilisateur->email,
+                'telephone' => $utilisateur->telephone,
+                'adresse' => $utilisateur->adresse,
+                'date_naissance' => $utilisateur->date_naissance,
+                'pseudo' => $utilisateur->pseudo
+            ];
+            echo json_encode($response);
+            
+
             } else {
             http_response_code(404);
             echo json_encode(['message' => 'Utilisateur non trouvé']);

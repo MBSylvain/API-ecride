@@ -1,25 +1,74 @@
 <?php
-header('Access-Control-Allow-Origin: *');
-header('Content-Type: application/json');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type, Access-Control-Allow-Methods, Authorization, X-Requested-With');
+header("Access-Control-Allow-Origin: http://localhost:3000");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Max-Age: 3600");
 
 include_once '../config/Database.php';
 include_once '../models/Reservation.php';
 
+//Connexion à la base de données
 $database = new Database();
 $db = $database->connect();
-
+if (!$db) {
+    http_response_code(500);
+    echo json_encode(['message' => 'Échec de la connexion à la base de données']);
+    exit();
+};
+// Instanciation du modèle Reservation
 $reservation = new Reservation($db);
+// Vérification de la méthode de la requête
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    // Répondre à la requête OPTIONS
+    http_response_code(204);
+    exit();
+};
+// Vérification de l'ID de l'utilisateur
+if (isset($_SESSION['utilisateur_id'])) {
+    $utilisateur_id = $_SESSION['utilisateur_id'];
+} elseif (isset($_GET['utilisateur_id'])) {
+    $utilisateur_id = $_GET['utilisateur_id'];
+} elseif (isset($data['utilisateur_id'])) {
+    $utilisateur_id = $data['utilisateur_id'];
+}
 
+// Récupération de la méthode de la requête
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Handle method overrides for HTML forms
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['_method'])) {
+        if ($_POST['_method'] === 'PUT') {
+            $method = 'PUT';
+            $data = $_POST;
+        } elseif ($_POST['_method'] === 'DELETE') {
+            $method = 'DELETE';
+            $data = $_POST;
+        }
+    } else {
+        // Regular POST processing
+        $data = json_decode(file_get_contents("php://input"));
+        if ($data === null) {
+            $data = $_POST;
+        }
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    // Process any GET parameters if needed
+    if (isset($_GET['utilisateur_id'])) {
+        $_utilisateur_id = $_GET['utilisateur_id'];
+    }
+} else {
+    // For PUT, DELETE, etc. get the input data
+    $data = json_decode(file_get_contents("php://input"));
+}
 
 switch ($method) {
     case 'GET':
-        if(isset($_GET['userId'])) {
+        if(isset($_utilisateur_id)) {
             // Utiliser la méthode read_by_user
-            $user_id = $_GET['userId'];
-            $reservations = $reservation->read_by_user($user_id);
+            $user_id = $_utilisateur_id;
+            $reservations = $reservation->read_by_user($utilisateur_id);
             
             if(empty($reservations)) {
                 echo json_encode(['message' => 'Aucune réservation trouvée']);
@@ -47,12 +96,10 @@ switch ($method) {
                     'trajet_id' => $reservation->trajet_id,
                     'nombre_places_reservees' => $reservation->nombre_places_reservees,
                     'statut' => $reservation->statut,
-                    'montant_total' => $reservation->montant_total,
                     'date_reservation' => $reservation->date_reservation,
                     'date_confirmation' => $reservation->date_confirmation,
                     'point_rdv' => $reservation->point_rdv,
                     'commentaire' => $reservation->commentaire,
-                    'bagages' => $reservation->bagages
                 ];
                 echo json_encode($reservation_arr);
             } else {
@@ -63,21 +110,41 @@ switch ($method) {
 
     case 'POST':
         $data = json_decode(file_get_contents("php://input"));
-
+        
+        // Vérification des données reçues
+        if (!$data || !isset($data->utilisateur_id) || !isset($data->trajet_id) || !isset($data->nombre_places_reservees)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Données invalides ou incomplètes',
+                'required' => ['utilisateur_id', 'trajet_id', 'nombre_places_reservees'],
+                'received' => $data
+            ]);
+            break;
+        }
+        
+        // Attribution des données
         $reservation->utilisateur_id = $data->utilisateur_id;
         $reservation->trajet_id = $data->trajet_id;
         $reservation->nombre_places_reservees = $data->nombre_places_reservees;
-        $reservation->statut = 'en_attente'; // Format correct pour le statut
-        $reservation->montant_total = $data->montant_total ?? 0;
+        $reservation->statut = 'en_attente';
         $reservation->date_reservation = date('Y-m-d H:i:s');
-        $reservation->point_rdv = $data->point_rdv ?? null;
-        $reservation->commentaire = $data->commentaire ?? null;
-        $reservation->bagages = $data->bagages ?? 0;
+        $reservation->commentaire = isset($data->commentaire) ? $data->commentaire : null;
+        $reservation->bagages = isset($data->bagages) ? $data->bagages : 0;
 
-        if($reservation->create()) {
-            echo json_encode(['message' => 'Réservation créée']);
+        if ($reservation->create()) {
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Réservation créée avec succès',
+                'reservation_id' => $reservation->reservation_id
+            ]);
         } else {
-            echo json_encode(['message' => 'Échec de la réservation']);
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Échec de la création de la réservation'
+            ]);
         }
         break;
 

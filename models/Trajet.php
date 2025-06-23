@@ -64,7 +64,7 @@ class Trajet {
         $stmt->bindValue($key + 1, $value);
     }
     
-    $stmt->execute();
+    $data =$stmt->execute();
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
