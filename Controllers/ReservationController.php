@@ -76,8 +76,8 @@ switch ($method) {
                 echo json_encode($reservations);
             }
         }
-        else if(isset($_GET['trajetId'])) {
-            $reservation->trajet_id = $_GET['trajetId'];
+        else if(isset($_GET['trajet_id'])) {
+            $reservation->trajet_id = $_GET['trajet_id'];
             $result = $reservation->read_by_trajet();
             
             $reservations_arr = array();
@@ -120,6 +120,40 @@ switch ($method) {
                 'required' => ['utilisateur_id', 'trajet_id', 'nombre_places_reservees'],
                 'received' => $data
             ]);
+            break;
+        }
+        // Ajout: action de validation
+        if (isset($data->action) && $data->action === 'validate') {
+            if (!isset($data->reservation_id) || !isset($data->status)) {
+                http_response_code(400);
+                echo json_encode(['message' => 'Données invalides ou incomplètes']);
+                break;
+            }
+            $reservation->reservation_id = $data->reservation_id;
+            $statut = $data->status === 'valide' ? 'confirmée' : 'refusée';
+            $reservation->statut = $statut;
+            if ($statut === 'confirmée') {
+                $reservation->date_confirmation = date('Y-m-d H:i:s');
+            }
+            if ($reservation->update()) {
+                // Récupérer l'email de l'utilisateur concerné
+                if ($reservation->read_single()) {
+                    $datautilisateur = $reservation->read_single($reservation->utilisateur_id);
+                    $email_utilisateur = $datautilisateur['email'] ?? null; 
+                    $subject = ($statut === 'confirmée') ? "Votre réservation a été validée" : "Votre réservation a été refusée";
+                    $message = ($statut === 'confirmée') ?
+                        "Bonjour, votre réservation pour le trajet a été validée." :
+                        "Bonjour, votre réservation pour le trajet a été refusée.";
+                    $headers = "From: noreply@tonsite.com\r\nContent-Type: text/plain; charset=UTF-8";
+                    if ($email_utilisateur) {
+                        mail($email_utilisateur, $subject, $message, $headers);
+                    }
+                }
+                echo json_encode(['message' => 'Statut de la réservation mis à jour et email envoyé']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['message' => 'Échec de la mise à jour']);
+            }
             break;
         }
         

@@ -98,14 +98,14 @@ class Reservation {
         $this->trajet_id = $row['trajet_id'];
         $this->nombre_places_reservees = $row['nombre_places_reservees'];
         $this->statut = $row['statut'];
-        $this->montant_total = $row['montant_total'];
+        //$this->montant_total = $row['montant_total'];
         $this->date_reservation = $row['date_reservation'];
         $this->date_confirmation = $row['date_confirmation'];
         $this->point_rdv = $row['point_rdv'];
         $this->commentaire = $row['commentaire'];
         $this->bagages = $row['bagages'];
         $this->date_creation = $row['date_creation'];
-        $this->date_modification = $row['date_modification'];
+        //$this->date_modification = $row['date_modification'];
         
         return true;
     }
