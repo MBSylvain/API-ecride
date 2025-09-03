@@ -34,7 +34,7 @@ if (isset($_SESSION['utilisateur_id'])) {
     $utilisateur_id = $data['utilisateur_id'];
 }
 
-// Handle special case for search functionality
+// Gestion de la recherche
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'SEARCH') {
     $method = 'SEARCH';
     $ville_depart = isset($_GET['ville_depart']) ? htmlspecialchars($_GET['ville_depart']) : '';
@@ -94,19 +94,18 @@ switch ($method) {
         }
         break;
     case 'SEARCH':
-        // Make all parameters optional by setting defaults
+        // Récupération des paramètres de recherche
         $ville_depart = isset($_GET['ville_depart']) ? $_GET['ville_depart'] : null;
         $ville_arrivee = isset($_GET['ville_arrivee']) ? $_GET['ville_arrivee'] : null;
         $date_depart = isset($_GET['date_depart']) ? $_GET['date_depart'] : null;
         
-        // Check if at least one parameter is provided
+        // logique de recherche filtrée
         if ($ville_depart !== null || $ville_arrivee !== null || $date_depart !== null) {
             $result = $trajet->filtre_by_searchbar($ville_depart, $ville_arrivee, $date_depart);
             
             if ($result && !empty($result)) {
                 echo json_encode($result);
             } else {
-                http_response_code(404);
                 echo json_encode([
                     'success' => false,
                     'message' => 'Aucun trajet trouvé',
@@ -114,7 +113,7 @@ switch ($method) {
                 ]);
             }
         } else {
-            // No parameters provided - return all trips or an error
+            // Aucun paramètre fourni - retourner tous les trajets ou une erreur
             $result = $trajet->read();
             if ($result) {
                 echo json_encode([
@@ -123,7 +122,6 @@ switch ($method) {
                     'data' => $result
                 ]);
             } else {
-                http_response_code(404);
                 echo json_encode([
                     'success' => false,
                     'message' => 'Aucun trajet disponible',

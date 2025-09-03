@@ -143,11 +143,15 @@ function handleLogin($data, $utilisateur) {
 switch ($method) {
     case 'GET':
         // Vérification authentification
-        if (!isset($_GET['utilisateur_id'])) {
+        if (!isset($_GET['utilisateur_id'])&&!isset($_GET['conducteur_id']) && !isset($_SESSION['utilisateur_id'])) {
             http_response_code(401);
             echo json_encode(['message' => 'Non authentifié']);
-            exit;
+            
+        } elseif (isset($_GET['utilisateur_id']) && isset($_GET['conducteur_id'])){
+                http_response_code  (200);
+                echo json_encode(['message' => 'Authentifié']);
         }
+
 
         // Lecture par utulisateur_id
         if (isset($_GET['utilisateur_id'])) {
