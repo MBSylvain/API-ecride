@@ -6,11 +6,15 @@ header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type
 
 include_once '../../config/Database.php';
 include_once '../../models/Role.php';
+include_once '../../Controllers/checkAuth.php';
 
 $database = new Database();
 $db = $database->connect();
 
 $role = new Role($db);
+
+// Vérifiez l'authentification
+verifyAuth();
 
 $method = $_SERVER['REQUEST_METHOD'];
 

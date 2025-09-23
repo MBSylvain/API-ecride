@@ -6,12 +6,10 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Max-Age: 3600");
 
-//session_start();
-//Recupération des informations de session
-
 
 include_once '../config/Database.php';
 include_once '../models/Voiture.php';
+include_once '../Controllers/checkAuth.php';
 
 // Initialize database connection
 $database = new Database();
@@ -22,6 +20,9 @@ if (!$db) {
     exit;
 }
 $voiture = new Voiture($db);
+
+// Vérifiez l'authentification
+verifyAuth();
 
 // Récupération de la méthode HTTP et des données
 $method = $_SERVER['REQUEST_METHOD'];
@@ -281,7 +282,6 @@ switch ($method) {
         http_response_code(500);
         echo json_encode([
             'message' => 'Échec de la suppression',
-            'error' => $voiture->getLastError() // Vous devriez ajouter cette méthode à votre classe Voiture
         ]);
     }
     break;

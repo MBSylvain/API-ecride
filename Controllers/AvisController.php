@@ -7,16 +7,17 @@ header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Max-Age: 3600");
 
 
-// Démarrer la session
-session_start();
-
 include_once '../config/Database.php';
 include_once '../models/Avis.php';
+include_once '../Controllers/checkAuth.php'; // Ajout de l'inclusion du modèle de vérification d'authentification
 
 $database = new Database();
 $db = $database->connect();
 
 $avis = new Avis($db);
+
+// Vérifiez l'authentification
+verifyAuth();
 
 $method = $_SERVER['REQUEST_METHOD'];
 

@@ -7,9 +7,6 @@ header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Max-Age: 3600");
 
 
-// Démarrer la session
-session_start();
-
 // Gestion des requêtes OPTIONS (CORS pré-vol)
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -19,6 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 // Inclusions
 include_once '../config/Database.php';
 include_once '../models/Utilisateur.php';
+include_once '../Controllers/checkAuth.php';
+
+// Vérifiez l'authentification
+//verifyAuth();
 
 // Initialisation de la base de données
 $database = new Database();
@@ -120,6 +121,8 @@ function handleLogin($data, $utilisateur) {
     
     if ($utilisateur->login()) {
         http_response_code(200); // OK
+        // Démarrer la session et stocker les informations utilisateur
+        
         echo json_encode([
             'success' => true, 
             'message' => 'Connexion réussie',
@@ -130,7 +133,11 @@ function handleLogin($data, $utilisateur) {
                 'role' => $_SESSION['role'] ?? 'utilisateur'
             ]
         ]);
-       
+        session_start();
+       $_SESSION['utilisateur_id'] = $utilisateur->utilisateur_id;
+       $_SESSION['nom'] = $utilisateur->nom;
+       $_SESSION['email'] = $utilisateur->email;
+       $_SESSION['role'] = $utilisateur->role;
 
     } else {
         http_response_code(401); // Unauthorized
@@ -139,7 +146,7 @@ function handleLogin($data, $utilisateur) {
     exit;
 }
 
-// Routeur principal
+    // Routeur principal
 switch ($method) {
     case 'GET':
         // Vérification authentification

@@ -1,16 +1,13 @@
 <?php
-session_start();
 header('Content-Type: application/json');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
 header('Access-Control-Allow-Origin: *');
 
-// Vérification de session
-if (!isset($_SESSION['utilisateur_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Non authentifié']);
-    exit();
-}
+include_once '../Controllers/checkAuth.php';
+
+// Vérifiez l'authentification
+verifyAuth();
 
 try {
     require_once '../config/Database.php';

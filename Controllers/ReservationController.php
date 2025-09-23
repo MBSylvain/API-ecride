@@ -7,6 +7,7 @@ header("Access-Control-Max-Age: 3600");
 
 include_once '../config/Database.php';
 include_once '../models/Reservation.php';
+include_once '../Controllers/checkAuth.php';
 
 //Connexion à la base de données
 $database = new Database();
@@ -18,6 +19,10 @@ if (!$db) {
 };
 // Instanciation du modèle Reservation
 $reservation = new Reservation($db);
+
+// Vérifiez l'authentification
+verifyAuth();
+
 // Vérification de la méthode de la requête
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     // Répondre à la requête OPTIONS
