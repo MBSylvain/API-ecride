@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: mon-api-php
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: DB_HOST
+        value: votre-hôte-de-base-de-données
+      - key: DB_USER
+        value: votre-utilisateur-de-base-de-données
+      - key: DB_PASSWORD
+        value: votre-mot-de-passe-de-base-de-données
+      - key: DB_NAME
+        value: votre-nom-de-base-de-données
