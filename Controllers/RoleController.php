@@ -1,12 +1,11 @@
 <?php
-header('Access-Control-Allow-Origin: *');
-header('Content-Type: application/json');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type, Access-Control-Allow-Methods, Authorization, X-Requested-With');
+require_once '../config/session.php';
 
-include_once '../../config/Database.php';
+// Inclusions
+include_once '../config/Database.php';
+include_once '../models/Utilisateur.php';
+include_once '../Controllers/checkAuth.php';
 include_once '../../models/Role.php';
-include_once '../../Controllers/checkAuth.php';
 
 $database = new Database();
 $db = $database->connect();

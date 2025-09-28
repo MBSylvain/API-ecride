@@ -153,13 +153,10 @@ class Trajet {
         $stmt->bindParam(':utilisateur_id', $this->utilisateur_id);
         $stmt->bindParam(':voiture_id', $this->voiture_id);
 
+        // Correction pour éviter la double exécution et récupérer l'ID généré
         if ($stmt->execute()) {
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':utilisateur_id', $this->utilisateur_id);
-            $stmt->execute();
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            $this->trajet_id = $result['id'];
-            return $result;
+            $this->trajet_id = $this->conn->lastInsertId(); // Récupère l'ID généré
+            return true;
         }
         return false;
     }
@@ -214,6 +211,21 @@ class Trajet {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':trajet_id', $this->trajet_id, PDO::PARAM_INT);
         return $stmt->execute();
+    }
+
+    // Method to get utilisateur_id by trajet_id
+    public function getUtilisateurIdByTrajetId($trajet_id) {
+        $query = "SELECT utilisateur_id FROM " . $this->table . " WHERE trajet_id = :trajet_id LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':trajet_id', $trajet_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            return $row;
+        }
+
+        return null; // Return null if no user is found for the given trajet_id
     }
 }
 ?>

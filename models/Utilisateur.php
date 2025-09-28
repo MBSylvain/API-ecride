@@ -49,8 +49,7 @@ class Utilisateur {
     
     return false;
     }
-
-
+    // Lire un utilisateur par ID
     public function read_single() {
         $query = "SELECT * FROM utilisateurs WHERE utilisateur_id = :id LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -279,5 +278,6 @@ public function getRoles() {
     
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
 }
 ?>

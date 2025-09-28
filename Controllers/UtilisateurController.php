@@ -1,25 +1,12 @@
 <?php
-// En-têtes CORS
-header("Access-Control-Allow-Origin: http://localhost:3000");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Max-Age: 3600");
-
-
-// Gestion des requêtes OPTIONS (CORS pré-vol)
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
+require_once '../config/session.php';
 
 // Inclusions
 include_once '../config/Database.php';
 include_once '../models/Utilisateur.php';
 include_once '../Controllers/checkAuth.php';
 
-// Vérifiez l'authentification
-//verifyAuth();
+
 
 // Initialisation de la base de données
 $database = new Database();
@@ -28,28 +15,7 @@ $utilisateur = new Utilisateur($db);
 
 // Récupération de la méthode HTTP et des données
 $method = $_SERVER['REQUEST_METHOD'];
-// Récupération des données JSON ou POST selon le format
-$data = json_decode(file_get_contents("php://input"));
-//Récupération de l'action envoyer dans le formulaire
-//
-// Récupérer l'action soit de $_POST soit de $data (JSON)
-$action = null;
-if (isset($_POST['action'])) {
-    $action = $_POST['action'];
-} elseif (isset($data->action)) {
-    $action = $data->action;
-}
 
-// Déterminer la méthode appropriée
-if ($method == 'POST' && $action == 'PUT') {
-    // Si la méthode est PUT, on la change
-    $method = 'PUT';
-} elseif ($method == 'POST' && $action == 'DELETE') {
-    // Si la méthode est DELETE, on la change
-    $method = 'DELETE';
-} else {
-    $method = $_SERVER['REQUEST_METHOD'];
-}
 
 
 // Fonction utilitaire pour nettoyer les entrées
@@ -90,133 +56,179 @@ function handleRegistration($data, $utilisateur) {
     $utilisateur->adresse = !empty($data->adresse) ? sanitize($data->adresse) : null;
     $utilisateur->date_naissance = !empty($data->date_naissance) ? sanitize($data->date_naissance) : null;
     $utilisateur->pseudo = !empty($data->pseudo) ? sanitize($data->pseudo) : null;
-    $utilisateur->role = sanitize($data->role ?? 'utilisateur'); // Valeur par défaut si non fournie
+    $utilisateur->role = sanitize($data->role ?? 'utilisateur');
 
     // Création du compte
     if ($utilisateur->create()) {
-        http_response_code(201); // Created
+        http_response_code(201);
         echo json_encode(['success' => true, 'message' => 'Compte créé avec succès']);
     } else {
-        http_response_code(500); // Internal Server Error
+        http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Échec de la création du compte']);
     }
     exit;
 }
 
 /**
- * Gère la connexion d'un utilisateur existant
+ * Gère la connexion d'un utilisateur existant - CORRIGÉ
  */
 function handleLogin($data, $utilisateur) {
     // Validation des données requises
     if (empty($data->email) || empty($data->password)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Email et mot de passe sont requis']);
-
         exit;
     }
 
     // Tentative de connexion
     $utilisateur->email = sanitize($data->email);
-    $utilisateur->password = $data->password; // Ne pas sanitizer le mot de passe
+    $utilisateur->password = $data->password;
     
     if ($utilisateur->login()) {
-        http_response_code(200); // OK
-        // Démarrer la session et stocker les informations utilisateur
+        // ✅ CORRECTION : Mettre à jour la session APRÈS la vérification du login
+        $_SESSION['utilisateur_id'] = $utilisateur->utilisateur_id;
+        $_SESSION['nom'] = $utilisateur->nom;
+        $_SESSION['email'] = $utilisateur->email;
+        $_SESSION['role'] = $utilisateur->role;
+        $_SESSION['last_activity'] = time();
         
+        http_response_code(200);
         echo json_encode([
             'success' => true, 
             'message' => 'Connexion réussie',
             'user' => [
-                'id' => $_SESSION['utilisateur_id'],
-                'nom' => $_SESSION['nom'],
-                'email' => $_SESSION['email'],
-                'role' => $_SESSION['role'] ?? 'utilisateur'
+                'id' => $utilisateur->utilisateur_id,
+                'nom' => $utilisateur->nom,
+                'email' => $utilisateur->email,
+                'role' => $utilisateur->role
             ]
         ]);
-        session_start();
-       $_SESSION['utilisateur_id'] = $utilisateur->utilisateur_id;
-       $_SESSION['nom'] = $utilisateur->nom;
-       $_SESSION['email'] = $utilisateur->email;
-       $_SESSION['role'] = $utilisateur->role;
-
     } else {
-        http_response_code(401); // Unauthorized
+        http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Email ou mot de passe incorrect']);
     }
     exit;
 }
 
-    // Routeur principal
+/**
+ * Gère la déconnexion
+ */
+function handleLogout() {
+    // Destruction de la session
+    $_SESSION = array();
+
+    // Suppression du cookie de session
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    session_destroy();
+    echo json_encode(['success' => true, 'message' => 'Déconnecté avec succès']);
+    exit;
+}
+
+// === ROUTEUR PRINCIPAL CORRIGÉ ===
+
+// Récupération des données selon la méthode
+$data = null;
+$action = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
+    $contentType = isset($_SERVER["CONTENT_TYPE"]) ? $_SERVER["CONTENT_TYPE"] : "";
+
+    if (strpos($contentType, "application/json") !== false) {
+        $data = json_decode(file_get_contents("php://input"));
+    } else {
+        // Pour les formulaires standards
+        $data = (object)$_POST;
+    }
+    // Associer la valeur de action à celle de la méthode si présente
+    if (isset($data->action) && !empty($data->action)) {
+        $method = strtoupper($data->action);
+    }
+}
+
 switch ($method) {
     case 'GET':
-        // Vérification authentification
-        if (!isset($_GET['utilisateur_id'])&&!isset($_GET['conducteur_id']) && !isset($_SESSION['utilisateur_id'])) {
-            http_response_code(401);
-            echo json_encode(['message' => 'Non authentifié']);
-            
-        } elseif (isset($_GET['utilisateur_id']) && isset($_GET['conducteur_id'])){
-                http_response_code  (200);
-                echo json_encode(['message' => 'Authentifié']);
-        }
-
-
-        // Lecture par utulisateur_id
+        // ✅ CORRECTION : Vérification d'authentification simplifiée
+        verifyAuth(); // Utilisateur doit être authentifié pour les GET
+        
+        // Lecture par utilisateur_id
         if (isset($_GET['utilisateur_id'])) {
             $utilisateur->utilisateur_id = sanitize($_GET['utilisateur_id']);
             if ($utilisateur->read_single()) {
-            $response = [
-                'utilisateur_id' => $utilisateur->utilisateur_id,
-                'nom' => $utilisateur->nom,
-                'prenom' => $utilisateur->prenom,
-                'email' => $utilisateur->email,
-                'telephone' => $utilisateur->telephone,
-                'adresse' => $utilisateur->adresse,
-                'date_naissance' => $utilisateur->date_naissance,
-                'pseudo' => $utilisateur->pseudo
-            ];
-            echo json_encode($response);
+                $response = [
+                    'utilisateur_id' => $utilisateur->utilisateur_id,
+                    'nom' => $utilisateur->nom,
+                    'prenom' => $utilisateur->prenom,
+                    'email' => $utilisateur->email,
+                    'telephone' => $utilisateur->telephone,
+                    'adresse' => $utilisateur->adresse,
+                    'date_naissance' => $utilisateur->date_naissance,
+                    'pseudo' => $utilisateur->pseudo,
+                    'role' => $utilisateur->role,
+                    'date_inscription' => $utilisateur->date_inscription
+                ];
+                echo json_encode($response);
             } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'Utilisateur non trouvé']);
+                http_response_code(404);
+                echo json_encode(['message' => 'Utilisateur non trouvé']);
             }
-        } else if (isset($_GET['email'])) {
+        } 
+        // Lecture par email
+        else if (isset($_GET['email'])) {
             $utilisateur->email = sanitize($_GET['email']);
             if ($utilisateur->read_by_email()) {
-            $response = [
-                'utilisateur_id' => $utilisateur->utilisateur_id,
-                'nom' => $utilisateur->nom,
-                'prenom' => $utilisateur->prenom,
-                'email' => $utilisateur->email,
-                'telephone' => $utilisateur->telephone,
-                'adresse' => $utilisateur->adresse,
-                'date_naissance' => $utilisateur->date_naissance,
-                'pseudo' => $utilisateur->pseudo
-
-            ];
-            echo json_encode($response);
-            
-            } else if (isset($_GET['conducteur_id'])&& isset($_GET['utilisateur_id'])) {
-            $utilisateur->utilisateur_id = sanitize($_GET['conducteur_id']);
-            if ($utilisateur->read_single());
-            $response = [
-                'utilisateur_id' => $utilisateur->utilisateur_id,
-                'nom' => $utilisateur->nom,
-                'prenom' => $utilisateur->prenom,
-                'email' => $utilisateur->email,
-                'telephone' => $utilisateur->telephone,
-                'adresse' => $utilisateur->adresse,
-                'date_naissance' => $utilisateur->date_naissance,
-                'pseudo' => $utilisateur->pseudo
-            ];
-            echo json_encode($response);
-            
-
+                $response = [
+                    'utilisateur_id' => $utilisateur->utilisateur_id,
+                    'nom' => $utilisateur->nom,
+                    'prenom' => $utilisateur->prenom,
+                    'email' => $utilisateur->email,
+                    'telephone' => $utilisateur->telephone,
+                    'adresse' => $utilisateur->adresse,
+                    'date_naissance' => $utilisateur->date_naissance,
+                    'pseudo' => $utilisateur->pseudo,
+                    'role' => $utilisateur->role,
+                    'date_inscription' => $utilisateur->date_inscription
+                ];
+                echo json_encode($response);
             } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'Utilisateur non trouvé']);
+                http_response_code(404);
+                echo json_encode(['message' => 'Utilisateur non trouvé']);
             }
-        } else {
-            // Lecture de tous les utilisateurs
+        } 
+        // Lecture utilisateur par trajet_id
+        else if (isset($_GET['trajet_id'])) {
+            $trajet_id = sanitize($_GET['trajet_id']);
+            $utilisateur_id = $utilisateur->getUtilisateurIdByTrajetId($trajet_id);
+
+            if ($utilisateur_id !== null) {
+                echo json_encode([
+                    'success' => true,
+                    'utilisateur_id' => $utilisateur_id
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Aucun utilisateur trouvé pour ce trajet.'
+                ]);
+            }
+        }
+
+
+
+        // Lecture de tous les utilisateurs (admin seulement)
+        else {
+            // Vérifier si l'utilisateur est admin
+            if ($_SESSION['role'] !== 'admin') {
+                http_response_code(403);
+                echo json_encode(['message' => 'Accès non autorisé']);
+                exit;
+            }
+            
             $result = $utilisateur->read();
             if (is_array($result) && count($result) > 0) {
                 echo json_encode($result);
@@ -228,55 +240,51 @@ switch ($method) {
         break;
 
     case 'POST':
-        // Récupération des données JSON ou POST selon le format
-        $data = null;
-        if (isset($_SERVER["CONTENT_TYPE"]) && strpos($_SERVER["CONTENT_TYPE"], "application/json") !== false) {
-            // Format JSON
-            $data = json_decode(file_get_contents("php://input"));
-        } else {
-            // Format POST standard
-            $data = (object)$_POST;
+        // Pas de verifyAuth() ici - permet l'inscription et la connexion
+        
+        if (!$data) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Données manquantes']);
+            exit;
         }
         
-        // Vérifier l'action pour différencier connexion et inscription
-        if (isset($data->action) && $data->action === 'register') {
-            // Traitement de l'inscription
-            handleRegistration($data, $utilisateur);
-        } else if (isset($data->email) && isset($data->password)) {
-            // Tentative de connexion
+        // Vérifier l'action pour différencier connexion, inscription, déconnexion
+        if (isset($data->action)) {
+            switch ($data->action) {
+                case 'register':
+                    handleRegistration($data, $utilisateur);
+                    break;
+                case 'logout':
+                    handleLogout();
+                    break;
+                default:
+                    // Si action non reconnue, tentative de connexion standard
+                    if (isset($data->email) && isset($data->password)) {
+                        handleLogin($data, $utilisateur);
+                    } else {
+                        http_response_code(400);
+                        echo json_encode(['message' => 'Action non reconnue ou données manquantes']);
+                    }
+            }
+        } 
+        // Tentative de connexion standard (sans action spécifique)
+        else if (isset($data->email) && isset($data->password)) {
             handleLogin($data, $utilisateur);
         } else {
             http_response_code(400);
             echo json_encode(['message' => 'Données requises manquantes']);
-            exit;
         }
         break;
 
-        
-
     case 'PUT':
-        // Vérification authentification
-        if (!isset($_SESSION['utilisateur_id'])) {
-            http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Non authentifié']);
+        // ✅ CORRECTION : Vérification d'authentification
+        verifyAuth();
+        
+        if (!$data) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Données manquantes']);
             exit;
         }
-
-        // Récupération des données selon le format
-        $data = null;
-        $contentType = isset($_SERVER["CONTENT_TYPE"]) ? $_SERVER["CONTENT_TYPE"] : "";
-        
-        if (strpos($contentType, "application/json") !== false) {
-            // Format JSON
-            $data = json_decode(file_get_contents("php://input"));
-        } else {
-            // Format URL encoded
-            parse_str(file_get_contents("php://input"), $putData);
-            $data = (object)$putData;
-        }
-
-        // Debug (à enlever en production)
-        error_log("Données reçues: " . print_r($data, true));
 
         // Validation des données obligatoires
         if (empty($data->nom) || empty($data->email)) {
@@ -297,53 +305,47 @@ switch ($method) {
 
         // Gestion spécifique du mot de passe
         if (!empty($data->password)) {
-            $utilisateur->password = $data->password; // Le hash est géré dans la méthode update()
+            $utilisateur->password = $data->password;
         }
 
         // Exécution de la mise à jour
         if ($utilisateur->update()) {
-            // Réponse JSON uniquement (pas de redirection ici)
+            // Mettre à jour aussi les données de session si nécessaire
+            $_SESSION['nom'] = $utilisateur->nom;
+            $_SESSION['email'] = $utilisateur->email;
+            
             echo json_encode([
                 'success' => true,
                 'message' => 'Utilisateur mis à jour',
                 'utilisateur_id' => $utilisateur->utilisateur_id
             ]);
-            exit;
         } else {
-            // Get error info if available
-            $errorInfo = $db->errorInfo();
-                        
             http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'Échec de la mise à jour',
-                'error' => $errorInfo[2] ?? 'Erreur inconnue'
+                'message' => 'Échec de la mise à jour'
             ]);
         }
         break;
-   
 
     case 'DELETE':
-        // Suppression
-        if (!isset($_SESSION['utilisateur_id'])) {
-            http_response_code(401);
-            echo json_encode(['message' => 'Non authentifié']);
-            exit;
-        }
-
+        // ✅ CORRECTION : Vérification d'authentification
+        verifyAuth();
+        
         $utilisateur->utilisateur_id = $_SESSION['utilisateur_id'];
 
         if ($utilisateur->delete()) {
             session_destroy();
-            echo json_encode(['message' => 'Utilisateur supprimé']);
+            echo json_encode(['success' => true, 'message' => 'Utilisateur supprimé']);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'Échec de la suppression']);
+            echo json_encode(['success' => false, 'message' => 'Échec de la suppression']);
         }
         break;
 
     default:
         http_response_code(405);
-        echo json_encode(['message' => 'Méthode non autorisée']);
+        echo json_encode(['success' => false, 'message' => 'Méthode non autorisée']);
         break;
 }
+?>

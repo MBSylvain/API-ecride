@@ -108,30 +108,54 @@ public function read_single() {
 }
 
     public function update() {
-        $query = 'UPDATE ' . $this->table . ' 
-            SET modele = :modele, immatriculation = :immatriculation, 
-            energie = :energie, couleur = :couleur, 
+         $query = 'UPDATE ' . $this->table . ' 
+        SET modele = :modele, 
+            marque = :marque,  
+            immatriculation = :immatriculation, 
+            energie = :energie, 
+            couleur = :couleur, 
             date_premiere_immatriculation = :date_premiere_immatriculation,
-            photo_url = :photo_url, description = :description,
-            nombre_places = :nombre_places
-            WHERE voiture_id = :voiture_id';
+            photo_url = :photo_url, 
+            description = :description,
+            nombre_places = :nombre_places,
+            utilisateur_id = :utilisateur_id  
+        WHERE voiture_id = :voiture_id';
 
         $stmt = $this->conn->prepare($query);
+       // Liaison des paramètres complets - AJOUT de :utilisateur_id
+    $stmt->bindParam(':modele', $this->modele);
+    $stmt->bindParam(':marque', $this->marque);
+    $stmt->bindParam(':immatriculation', $this->immatriculation);
+    $stmt->bindParam(':energie', $this->energie);
+    $stmt->bindParam(':couleur', $this->couleur);
+    $stmt->bindParam(':date_premiere_immatriculation', $this->date_premiere_immatriculation);
+    $stmt->bindParam(':photo_url', $this->photo_url);
+    $stmt->bindParam(':description', $this->description);
+    $stmt->bindParam(':nombre_places', $this->nombre_places);
+    $stmt->bindParam(':utilisateur_id', $this->utilisateur_id); // ← AJOUT IMPORTANT !
+    $stmt->bindParam(':voiture_id', $this->voiture_id);
 
-        $stmt->bindParam(':modele', $this->modele);
-        $stmt->bindParam(':immatriculation', $this->immatriculation);
-        $stmt->bindParam(':energie', $this->energie);
-        $stmt->bindParam(':couleur', $this->couleur);
-        $stmt->bindParam(':date_premiere_immatriculation', $this->date_premiere_immatriculation);
-        $stmt->bindParam(':voiture_id', $this->voiture_id);
-        $stmt->bindParam(':photo_url', $this->photo_url);
-        $stmt->bindParam(':description', $this->description);
-        $stmt->bindParam(':nombre_places', $this->nombre_places);
+        // Ajout de logs pour déboguer la méthode update
+        error_log('Requête SQL exécutée : ' . $query);
 
-        if($stmt->execute()) {
-            return true;
+        // Ajout de logs pour afficher les paramètres liés à la requête SQL
+        error_log('Paramètres liés à la requête SQL : ' . json_encode([
+            'modele' => $this->modele,
+            'immatriculation' => $this->immatriculation,
+            'energie' => $this->energie,
+            'couleur' => $this->couleur,
+            'date_premiere_immatriculation' => $this->date_premiere_immatriculation,
+            'photo_url' => $this->photo_url,
+            'description' => $this->description,
+            'nombre_places' => $this->nombre_places,
+            'voiture_id' => $this->voiture_id
+        ]));
+        if (!$stmt->execute()) {
+            error_log('Erreur SQL : ' . print_r($stmt->errorInfo(), true));
+            return false;
         }
-        return false;
+
+        return $stmt ;
     }
 
     public function delete() {

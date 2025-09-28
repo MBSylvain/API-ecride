@@ -1,12 +1,10 @@
 <?php
-// En-têtes CORS
-header("Access-Control-Allow-Origin: http://localhost:3000");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Max-Age: 3600");
+require_once '../config/session.php';
 
+// Inclusions
 include_once '../config/Database.php';
+include_once '../models/Utilisateur.php';
+include_once '../Controllers/checkAuth.php';
 include_once '../models/Trajet.php';
 
 
@@ -56,9 +54,21 @@ $date_depart = isset($_GET['date_depart']) ? htmlspecialchars($_GET['date_depart
 // Gestion des différentes méthodes
 switch ($method) {
     case 'GET':
-        // Si un ID de trajet est fourni, on récupère ce trajet spécifique
-        if (isset($utilisateur_id)) {
-            $results= $trajet->read_by_user($utilisateur_id);
+        // Si un ID de trajet est fourni dans l'URL, on récupère ce trajet spécifique
+        if (isset($_GET['trajet_id']) && !empty($_GET['trajet_id'])) {
+            $trajet->trajet_id = $_GET['trajet_id'];
+            $result = $trajet->getUtilisateurIdByTrajetId($trajet->trajet_id);
+            $resultdetail= $trajet->read_single();
+            if ($result || $resultdetail) {
+                
+                echo json_encode($resultdetail);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'Trajet non trouvé']);
+            }
+        } elseif (isset($utilisateur_id)) {
+            // Si un ID utilisateur est fourni, on récupère les trajets de cet utilisateur
+            $results = $trajet->read_by_user($utilisateur_id);
             if ($results && !empty($results)) {
                 echo json_encode($results);
             } else {
@@ -68,27 +78,15 @@ switch ($method) {
                     'error' => true
                 ]);
             }
-            } else if (isset($_GET['trajet_id'])) { 
-            $trajet->trajet_id = $_GET['trajet_id'];
-            $result = $trajet->read_single();
-            if ($result) {
-                echo json_encode([
-                    'message' => 'Trajet récupéré avec succès',
-                    'data' => $result
-                ]);
-            } else {
-                http_response_code(404);
-                echo json_encode(['message' => 'Trajet non trouvé']);
-            }
-
         } else {
+            // Sinon, on récupère tous les trajets
             $result = $trajet->read();
             if ($result) {
-            $trajets_arr = $result;
-            echo json_encode([
-                'message' => 'La totalité desTrajets récupérés avec succès',
-                'data' => $trajets_arr
-            ]);
+                $trajets_arr = $result;
+                echo json_encode([
+                    'message' => 'La totalité des Trajets récupérés avec succès',
+                    'data' => $trajets_arr
+                ]);
             } else {
                 http_response_code(500);
                 echo json_encode(array('message' => 'Erreur lors de la récupération des trajets'));
@@ -158,7 +156,7 @@ switch ($method) {
         $trajet->prix = $data->prix;
         $trajet->description = $data->description ?? null;
         $trajet->bagages_autorises = isset($data->bagages_autorises) ? 1 : 0;
-        $trajet->fumeur_autorise = isset($data->fumeur_autorise) ? 1 : 0;
+        //$trajet->fumeur_autorise = isset($data->fumeur_autorise) ? 1 : 0;
         $trajet->animaux_autorises = isset($data->animaux_autorises) ? 1 : 0;
         $trajet->statut = 'planifié';
         $trajet->utilisateur_id = $utilisateur_id;
@@ -251,12 +249,14 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        //$data = json_decode(file_get_contents("php://input"));
-        $data = (array)$_POST;
-        if (!$data || !isset($data->trajet_id)) {
-            http_response_code(400);
-            echo json_encode(array('message' => 'ID de trajet manquant'));
-            break;
+        // Récupérer l'ID depuis l'URL ou le corps de la requête
+$trajet_id = isset($_GET['trajet_id']) ? $_GET['trajet_id'] : 
+            (isset($data['trajet_id']) ? $data['trajet_id'] : null);
+
+if (!$trajet_id) {
+    http_response_code(400);
+    echo json_encode(array('message' => 'ID de trajet manquant'));
+    break;
         }
 
         $trajet->trajet_id = $data['trajet_id'];

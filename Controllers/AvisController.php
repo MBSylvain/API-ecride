@@ -6,10 +6,13 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Max-Age: 3600");
 
+require_once '../config/session.php';
 
+// Inclusions
 include_once '../config/Database.php';
+include_once '../models/Utilisateur.php';
+include_once '../Controllers/checkAuth.php';
 include_once '../models/Avis.php';
-include_once '../Controllers/checkAuth.php'; // Ajout de l'inclusion du modèle de vérification d'authentification
 
 $database = new Database();
 $db = $database->connect();
@@ -151,13 +154,22 @@ switch ($method) {
         break;
 
     case 'POST':
-        $data = json_decode(file_get_contents("php://input"));
+        $data = json_decode(file_get_contents("php://input")); 
 
         // Validate required fields
         if(!isset($data->auteur_id) || !isset($data->destinataire_id) || 
            !isset($data->trajet_id) || !isset($data->commentaire) || !isset($data->note)) {
             http_response_code(400);
             echo json_encode(array('message' => 'Données incomplètes'));
+            // affiché les données manquantes
+            $missing_fields = [];
+            if(!isset($data->auteur_id)) $missing_fields[] = 'auteur_id';
+            if(!isset($data->destinataire_id)) $missing_fields[] = 'destinataire_id';
+            if(!isset($data->trajet_id)) $missing_fields[] = 'trajet_id';
+            if(!isset($data->commentaire)) $missing_fields[] = 'commentaire';
+            if(!isset($data->note)) $missing_fields[] = 'note';
+
+            echo json_encode(array('message' => 'Données incomplètes', 'missing_fields' => $missing_fields));
             break;
         }
 
@@ -168,13 +180,14 @@ switch ($method) {
             break;
         }
 
-        $avis->auteur_id = $data->auteur_id;
-        $avis->destinataire_id = $data->destinataire_id;
-        $avis->trajet_id = $data->trajet_id;
-        $avis->commentaire = $data->commentaire;
-        $avis->note = $data->note;
-        $avis->statut = $data->statut ?? 'publié'; // Default status is 'publié'
-        $avis->date_creation = date('Y-m-d H:i:s'); // Current timestamp
+       $avis->auteur_id = $data->auteur_id;
+    $avis->destinataire_id = $data->destinataire_id;
+    $avis->trajet_id = $data->trajet_id;
+    $avis->commentaire = $data->commentaire;
+    $avis->note = $data->note;
+    $avis->statut = $data->statut ?? 'publié'; // Default status is 'publié'
+    $avis->date_creation = date('Y-m-d H:i:s'); // Current timestamp
+    $avis->utilisateur_id = $data->utilisateur_id ?? null; // Ajout du champ utilisateur_id
 
         if($avis->create()) {
             http_response_code(201);

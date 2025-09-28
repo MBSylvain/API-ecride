@@ -69,24 +69,54 @@ class Avis {
     }
 
     public function create() {
-        $query = 'INSERT INTO ' . $this->table . ' 
-            SET utilisateur_id = :utilisateur_id, commentaire = :commentaire, 
-            note = :note, statut = :statut, auteur_id = :auteur_id, destinataire_id = :destinataire_id, trajet_id = :trajet_id, date_creation = :date_creation';
+        // Vérifiez si le destinataire existe
+        $query = 'SELECT COUNT(*) FROM utilisateurs WHERE utilisateur_id = :destinataire_id';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':destinataire_id', $this->destinataire_id);
+        $stmt->execute();
+        if ($stmt->fetchColumn() == 0) {
+            throw new Exception('Le destinataire spécifié n\'existe pas.');
+        }
 
+        // Vérifiez si l'auteur existe
+        $query = 'SELECT COUNT(*) FROM utilisateurs WHERE utilisateur_id = :auteur_id';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':auteur_id', $this->auteur_id);
+        $stmt->execute();
+        if ($stmt->fetchColumn() == 0) {
+            throw new Exception('L\'auteur spécifié n\'existe pas.');
+        }
+
+        // Vérifiez si le trajet existe
+        $query = 'SELECT COUNT(*) FROM trajets WHERE trajet_id = :trajet_id';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':trajet_id', $this->trajet_id);
+        $stmt->execute();
+        if ($stmt->fetchColumn() == 0) {
+            throw new Exception('Le trajet spécifié n\'existe pas.');
+        }
+
+        // Requête d'insertion
+        $query = 'INSERT INTO avis (auteur_id, destinataire_id, trajet_id, commentaire, note, statut, date_creation)
+                  VALUES (:auteur_id, :destinataire_id, :trajet_id, :commentaire, :note, :statut, :date_creation)';
         $stmt = $this->conn->prepare($query);
 
-        $stmt->bindParam(':utilisateur_id', $this->utilisateur_id);
-        $stmt->bindParam(':commentaire', $this->commentaire);
-        $stmt->bindParam(':note', $this->note);
-        $stmt->bindParam(':statut', $this->statut);
+        // Liaison des paramètres
         $stmt->bindParam(':auteur_id', $this->auteur_id);
         $stmt->bindParam(':destinataire_id', $this->destinataire_id);
         $stmt->bindParam(':trajet_id', $this->trajet_id);
+        $stmt->bindParam(':commentaire', $this->commentaire);
+        $stmt->bindParam(':note', $this->note);
+        $stmt->bindParam(':statut', $this->statut);
         $stmt->bindParam(':date_creation', $this->date_creation);
 
-        if($stmt->execute()) {
+        // Exécution de la requête
+        if ($stmt->execute()) {
             return true;
         }
+
+        // Gestion des erreurs
+        error_log('Erreur SQL : ' . print_r($stmt->errorInfo(), true));
         return false;
     }
 

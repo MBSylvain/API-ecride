@@ -1,46 +1,55 @@
 <?php
-header("Access-Control-Allow-Origin: http://localhost:3000");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Max-Age: 3600");
-session_start();
-var_dump($_SESSION);
+require_once '../config/session.php';
+
 /**
  * Vérifie si l'utilisateur est authentifié et gère les sessions.
  * Détruit la session après un timeout ou si non authentifié.
  */
 function verifyAuth() {
-    // Durée maximale d'inactivité (en secondes)
-    $timeout = 1800; // 30 minutes
+    $timeout = 3600; // 1 heure
 
-    // Vérifiez si la session a expiré
+    // Vérifie si la session a expiré
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
-        // Détruire la session si elle a expiré
         session_unset();
         session_destroy();
-        http_response_code(401); // Non autorisé
-        echo json_encode(['message' => 'Session expirée']);
+        http_response_code(401);
+        echo json_encode([
+            'isAuthenticated' => false,
+            'message' => 'Session expirée'
+        ]);
         exit();
     }
 
-    // Vérifiez si l'utilisateur est authentifié
+    // Vérifie si l'utilisateur est authentifié
     if (!isset($_SESSION['utilisateur_id'])) {
-        http_response_code(401); // Non autorisé
-        echo json_encode(['message' => 'Non authentifié']);
+        http_response_code(401);
+        echo json_encode([
+            'isAuthenticated' => false,
+            'message' => 'Non authentifié'
+        ]);
         exit();
     }
 
     // Mettre à jour l'heure de la dernière activité
     $_SESSION['last_activity'] = time();
-};
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Vérifiez si l'utilisateur est connecté
+// === GESTION DES REQUÊTES OPTIONS (CORS Pré-vol) ===
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// === LOGIQUE SPÉCIFIQUE PCE FICHIER checkAuth.php ===
+// Si on appelle directement ce fichier en GET, on retourne le statut d'authentification
+$current_file = basename($_SERVER['PHP_SELF']);
+if ($current_file === 'checkAuth.php' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    
+    // Appliquer la vérification d'authentification
     if (isset($_SESSION['utilisateur_id'])) {
-        http_response_code(200); // OK
+        // Utilisateur connecté
         echo json_encode([
-            'success' => true,
+            'isAuthenticated' => true,
             'message' => 'Utilisateur authentifié',
             'utilisateur_id' => $_SESSION['utilisateur_id'],
             'nom' => $_SESSION['nom'] ?? null,
@@ -48,9 +57,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'role' => $_SESSION['role'] ?? null
         ]);
     } else {
-        http_response_code(401); // Non autorisé
-        echo json_encode(['success' => false, 'message' => 'Utilisateur non authentifié']);
+        // Utilisateur non connecté
+        echo json_encode([
+            'isAuthenticated' => false,
+            'message' => 'Non authentifié'
+        ]);
     }
     exit();
-};
+}
 
+// === LOGOUT FUNCTIONALITY ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Vérifier le content-type pour gérer JSON et form-data
+    $contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
+    
+    if ($contentType === "application/json") {
+        // Récupérer les données JSON
+        $content = file_get_contents("php://input");
+        $data = json_decode($content, true);
+        $action = $data['action'] ?? '';
+    } else {
+        // Récupérer les données form
+        $action = $_POST['action'] ?? '';
+    }
+    
+    if ($action === 'logout') {
+        try {
+            // Démarrer la session si pas déjà fait
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            
+            // Sauvegarder l'ID utilisateur pour les logs
+            $user_id = $_SESSION['utilisateur_id'] ?? null;
+            
+            // Nettoyer la session
+            session_unset();
+            session_destroy();
+            
+            // Réponse JSON cohérente
+            header('Content-Type: application/json');
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Déconnexion réussie',
+                'isAuthenticated' => false
+            ]);
+            
+            exit();
+            
+        } catch (Exception $e) {
+            error_log("Erreur déconnexion: " . $e->getMessage());
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erreur lors de la déconnexion',
+                'error' => $e->getMessage()
+            ]);
+            exit();
+        }
+    }
+}
