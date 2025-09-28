@@ -7,7 +7,6 @@ include_once '../models/Utilisateur.php';
 include_once '../Controllers/checkAuth.php';
 
 
-
 // Initialisation de la base de données
 $database = new Database();
 $db = $database->connect();

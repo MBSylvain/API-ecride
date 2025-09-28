@@ -1,0 +1,13 @@
+{
+  "name": "ecorideApi",
+  "description": "Une API PHP Ecoride",
+  "require": {},
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "scripts": {
+    "start": "php -S 0.0.0.0:10000 -t ."
+  }
+}
