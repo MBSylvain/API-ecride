@@ -79,6 +79,7 @@ switch ($method) {
                 echo json_encode($reservations);
             }
         }
+        // Lecture par trajet_id
         else if(isset($_GET['trajet_id'])) {
             $reservation->trajet_id = $_GET['trajet_id'];
             $result = $reservation->read_by_trajet();
@@ -89,7 +90,7 @@ switch ($method) {
             }
             
             echo json_encode($reservations_arr);
-        }
+        }// Lecture d'une réservation spécifique par reservationId
         else if(isset($_GET['reservationId'])) {
             $reservation->reservation_id = $_GET['reservationId'];
             if($reservation->read_single()) {
@@ -108,6 +109,19 @@ switch ($method) {
             } else {
                 echo json_encode(['message' => 'Réservation non trouvée']);
             }
+        }
+        else if ($_SESSION['role'] !== 'Administrateur') { // Lecture de toutes les réservations (admin seulement)
+            http_response_code(403);
+            echo json_encode(['message' => 'Accès non autorisé']);
+            exit;
+        } else {
+            // Vérifier si l'utilisateur est admin
+            $result = $reservation->read_all();
+            $reservations_arr = array();
+            while($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                array_push($reservations_arr, $row);
+            }
+            echo json_encode($reservations_arr);
         }
         break;
 

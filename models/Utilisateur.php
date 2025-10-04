@@ -14,9 +14,11 @@ class Utilisateur {
     public $photo;
     public $pseudo;
     public $role;
-    public $statut;
     public $date_inscription;
     public $compte_actif;
+    public $date_modification;
+
+
 
     public function __construct($db) {
         $this->conn = $db;
@@ -73,6 +75,7 @@ class Utilisateur {
     
         return $stmt;
     }
+    
     
     public function read_voitures() {
         $query = 'SELECT v.* FROM voiture v 
@@ -226,6 +229,7 @@ class Utilisateur {
             $this->prenom = $row['prenom'];
             $this->email = $row['email'];
             $this->pseudo = $row['pseudo'];
+            $this->role = $row['role'];
             //stockage de l'ID de l'utilisateur dans la session
             $_SESSION['utilisateur_id'] = $row['utilisateur_id'];
         $_SESSION['nom'] = $row['nom'];
@@ -234,6 +238,8 @@ class Utilisateur {
         $_SESSION['pseudo'] = $row['pseudo'];
         $_SESSION['telephone'] = $row['telephone'];
         $_SESSION['adresse'] = $row['adresse'];
+        $_SESSION['date_naissance'] = $row['date_naissance'];
+        $_SESSION['role'] = $row['role']; // Stocker le rôle dans la session
              // Important: Sauvegarder la session
         session_write_close();
             return true;

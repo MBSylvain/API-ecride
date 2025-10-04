@@ -89,6 +89,7 @@ function handleLogin($data, $utilisateur) {
         $_SESSION['nom'] = $utilisateur->nom;
         $_SESSION['email'] = $utilisateur->email;
         $_SESSION['role'] = $utilisateur->role;
+
         $_SESSION['last_activity'] = time();
         
         http_response_code(200);
@@ -100,6 +101,7 @@ function handleLogin($data, $utilisateur) {
                 'nom' => $utilisateur->nom,
                 'email' => $utilisateur->email,
                 'role' => $utilisateur->role
+
             ]
         ]);
     } else {
@@ -198,31 +200,14 @@ switch ($method) {
                 echo json_encode(['message' => 'Utilisateur non trouvé']);
             }
         } 
-        // Lecture utilisateur par trajet_id
-        else if (isset($_GET['trajet_id'])) {
-            $trajet_id = sanitize($_GET['trajet_id']);
-            $utilisateur_id = $utilisateur->getUtilisateurIdByTrajetId($trajet_id);
-
-            if ($utilisateur_id !== null) {
-                echo json_encode([
-                    'success' => true,
-                    'utilisateur_id' => $utilisateur_id
-                ]);
-            } else {
-                http_response_code(404);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Aucun utilisateur trouvé pour ce trajet.'
-                ]);
-            }
-        }
+        
 
 
 
         // Lecture de tous les utilisateurs (admin seulement)
         else {
             // Vérifier si l'utilisateur est admin
-            if ($_SESSION['role'] !== 'admin') {
+            if ($_SESSION['role'] !== 'Administrateur') {
                 http_response_code(403);
                 echo json_encode(['message' => 'Accès non autorisé']);
                 exit;

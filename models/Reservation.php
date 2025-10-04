@@ -109,6 +109,13 @@ class Reservation {
         
         return true;
     }
+    // Read par l'administrateur pour toutes les réservations
+        public function read_all() {
+            $query = 'SELECT * FROM ' . $this->table;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt;   
+    }
 
     /**
      * Créer une réservation

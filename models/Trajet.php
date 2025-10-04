@@ -30,42 +30,71 @@ class Trajet {
         $query = 'SELECT * FROM ' . $this->table;
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return $results;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function filtre_by_searchbar($ville_depart = null, $ville_arrivee = null, $date_depart = null) {
     $conditions = [];
     $params = [];
-    
     if (!empty($ville_depart)) {
-        $conditions[] = "ville_depart LIKE ?";
+        $conditions[] = "t.ville_depart LIKE ?";
         $params[] = "%$ville_depart%";
     }
-    
     if (!empty($ville_arrivee)) {
-        $conditions[] = "ville_arrivee LIKE ?";
+        $conditions[] = "t.ville_arrivee LIKE ?";
         $params[] = "%$ville_arrivee%";
     }
-    
     if (!empty($date_depart)) {
-        $conditions[] = "DATE(date_depart) = ?";
+        $conditions[] = "DATE(t.date_depart) = ?";
         $params[] = $date_depart;
     }
-    
-    if (empty($conditions)) {
-        return []; // ou retourner tous les résultats si aucun filtre
-    }
-    
-    $query = 'SELECT * FROM ' . $this->table . ' WHERE ' . implode(' AND ', $conditions);
+    $conditions[] = "t.statut = 'planifié'";
+    $where = !empty($conditions) ? ('WHERE ' . implode(' AND ', $conditions)) : '';
+    $query = "SELECT 
+        t.*, 
+        u.pseudo AS conducteur_pseudo,
+        u.prenom AS conducteur_prenom,
+        u.nom AS conducteur_nom,
+        u.email AS conducteur_email,
+        v.energie, 
+        v.photo_url AS voiture_photo,
+        AVG(a.note) AS note_conducteur
+    FROM trajets t
+    JOIN utilisateurs u ON t.utilisateur_id = u.utilisateur_id
+    LEFT JOIN voiture v ON t.voiture_id = v.voiture_id
+    LEFT JOIN avis a ON a.destinataire_id = u.utilisateur_id
+    $where
+    GROUP BY t.trajet_id";
     $stmt = $this->conn->prepare($query);
-    
     foreach ($params as $key => $value) {
         $stmt->bindValue($key + 1, $value);
     }
-    
-    $data =$stmt->execute();
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute();
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Si aucun paramètre n'est renseigné, retourner tous les trajets planifiés avec toutes les données jointes
+    if (empty($ville_depart) && empty($ville_arrivee) && empty($date_depart)) {
+        // Requête pour tous les trajets planifiés avec jointures
+        $queryAll = "SELECT 
+            t.*, 
+            u.pseudo AS conducteur_pseudo,
+            u.prenom AS conducteur_prenom,
+            u.nom AS conducteur_nom,
+            u.email AS conducteur_email,
+            v.energie, 
+            v.photo_url AS voiture_photo,
+            AVG(a.note) AS note_conducteur
+        FROM trajets t
+        JOIN utilisateurs u ON t.utilisateur_id = u.utilisateur_id
+        LEFT JOIN voiture v ON t.voiture_id = v.voiture_id
+        LEFT JOIN avis a ON a.destinataire_id = u.utilisateur_id
+        WHERE t.statut = 'planifié'
+        GROUP BY t.trajet_id";
+        $stmtAll = $this->conn->prepare($queryAll);
+        $stmtAll->execute();
+        return $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+    }
+    // Si des paramètres sont renseignés, retourner aussi toutes les données jointes
+    return $results;
 }
 
 

@@ -66,7 +66,7 @@ switch ($method) {
                 http_response_code(404);
                 echo json_encode(['message' => 'Trajet non trouvé']);
             }
-        } elseif (isset($utilisateur_id)) {
+        } elseif (isset($utilisateur_id) && $_SESSION['role'] !== 'Administrateur') {
             // Si un ID utilisateur est fourni, on récupère les trajets de cet utilisateur
             $results = $trajet->read_by_user($utilisateur_id);
             if ($results && !empty($results)) {
@@ -78,58 +78,65 @@ switch ($method) {
                     'error' => true
                 ]);
             }
-        } else {
-            // Sinon, on récupère tous les trajets
-            $result = $trajet->read();
-            if ($result) {
-                $trajets_arr = $result;
-                echo json_encode([
-                    'message' => 'La totalité des Trajets récupérés avec succès',
-                    'data' => $trajets_arr
-                ]);
+        } elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'Administrateur') {
+            // Si l'utilisateur est admin, on récupère tous les trajets
+            $results = $trajet->read();
+            if ($results && !empty($results)) {
+                echo json_encode($results);
             } else {
-                http_response_code(500);
-                echo json_encode(array('message' => 'Erreur lors de la récupération des trajets'));
-            }
-        }
-        break;
-    case 'SEARCH':
-        // Récupération des paramètres de recherche
-        $ville_depart = isset($_GET['ville_depart']) ? $_GET['ville_depart'] : null;
-        $ville_arrivee = isset($_GET['ville_arrivee']) ? $_GET['ville_arrivee'] : null;
-        $date_depart = isset($_GET['date_depart']) ? $_GET['date_depart'] : null;
-        
-        // logique de recherche filtrée
-        if ($ville_depart !== null || $ville_arrivee !== null || $date_depart !== null) {
-            $result = $trajet->filtre_by_searchbar($ville_depart, $ville_arrivee, $date_depart);
-            
-            if ($result && !empty($result)) {
-                echo json_encode($result);
-            } else {
+                http_response_code(404);
                 echo json_encode([
-                    'success' => false,
-                    'message' => 'Aucun trajet trouvé',
-                    'data' => []
-                ]);
-            }
-        } else {
-            // Aucun paramètre fourni - retourner tous les trajets ou une erreur
-            $result = $trajet->read();
-            if ($result) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Tous les trajets récupérés',
-                    'data' => $result
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => false,
                     'message' => 'Aucun trajet disponible',
                     'data' => []
                 ]);
             }
         }
         break;
+
+case 'SEARCH':
+    // Récupération des paramètres de recherche
+    $ville_depart = isset($_GET['ville_depart']) ? $_GET['ville_depart'] : null;
+    $ville_arrivee = isset($_GET['ville_arrivee']) ? $_GET['ville_arrivee'] : null;
+    $date_depart = isset($_GET['date_depart']) ? $_GET['date_depart'] : null;
+    $prix_max = isset($_GET['prix_max']) ? $_GET['prix_max'] : null;
+    $note_min = isset($_GET['note_min']) ? $_GET['note_min'] : null;
+    $ecologique = isset($_GET['ecologique']) ? $_GET['ecologique'] : null;
+
+    // logique de recherche filtrée
+    if ($ville_depart !== null || $ville_arrivee !== null || $date_depart !== null || $prix_max !== null || $note_min !== null || $ecologique !== null) {
+        $result = $trajet->filtre_by_searchbar($ville_depart, $ville_arrivee, $date_depart, $prix_max, $note_min, $ecologique);
+
+        if ($result && !empty($result)) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Trajets trouvés',
+                'data' => $result
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Aucun trajet trouvé',
+                'data' => []
+            ]);
+        }
+    } else {
+        // Aucun paramètre fourni - retourner tous les trajets ou une erreur
+        $result = $trajet->filtre_by_searchbar(null, null, null, null, null, null);
+        if ($result) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Tous les trajets récupérés',
+                'data' => $result
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Aucun trajet disponible',
+                'data' => []
+            ]);
+        }
+    }
+break;
             
     case 'POST':
         // Récupération des données du formulaire
