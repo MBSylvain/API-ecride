@@ -73,29 +73,12 @@ class Trajet {
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     // Si aucun paramètre n'est renseigné, retourner tous les trajets planifiés avec toutes les données jointes
     if (empty($ville_depart) && empty($ville_arrivee) && empty($date_depart)) {
-        // Requête pour tous les trajets planifiés avec jointures
-        $queryAll = "SELECT 
-            t.*, 
-            u.pseudo AS conducteur_pseudo,
-            u.prenom AS conducteur_prenom,
-            u.nom AS conducteur_nom,
-            u.email AS conducteur_email,
-            v.energie, 
-            v.photo_url AS voiture_photo,
-            AVG(a.note) AS note_conducteur
-        FROM trajets t
-        JOIN utilisateurs u ON t.utilisateur_id = u.utilisateur_id
-        LEFT JOIN voiture v ON t.voiture_id = v.voiture_id
-        LEFT JOIN avis a ON a.destinataire_id = u.utilisateur_id
-        WHERE t.statut = 'planifié'
-        GROUP BY t.trajet_id";
-        $stmtAll = $this->conn->prepare($queryAll);
-        $stmtAll->execute();
-        return $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+        return $results;
     }
     // Si des paramètres sont renseignés, retourner aussi toutes les données jointes
     return $results;
 }
+
 
 
     public function read_single() {
@@ -128,6 +111,64 @@ class Trajet {
         }
         return false;
     }
+
+    public function read_single_trajet($trajet_id) {
+        $query = 'SELECT * FROM ' . $this->table . ' WHERE trajet_id = ? LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $trajet_id);
+        $stmt->execute();
+        
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($row) {
+            $this->ville_depart = $row['ville_depart'];
+            $this->ville_arrivee = $row['ville_arrivee'];
+            $this->adresse_depart = $row['adresse_depart'];
+            $this->adresse_arrivee = $row['adresse_arrivee'];
+            $this->date_depart = $row['date_depart'];
+            $this->heure_depart = $row['heure_depart'];
+            $this->heure_arrivee = $row['heure_arrivee'];
+            $this->nombre_places = $row['nombre_places'];
+            $this->prix = $row['prix'];
+            $this->description = $row['description'];
+            $this->bagages_autorises = $row['bagages_autorises'];
+            $this->fumeur_autorise = $row['fumeur_autorise'];
+            $this->animaux_autorises = $row['animaux_autorises'];
+            $this->statut = $row['statut'];
+            $this->utilisateur_id = $row['utilisateur_id'];
+            $this->voiture_id = $row['voiture_id'];
+            $this->date_creation = $row['date_creation'];
+            return ($row);
+        }
+        return false;
+    }
+
+        // Calcule le nombre de places restantes pour un trajet donné
+        public function getPlacesRestantes($trajet_id) {
+        // Récupérer le nombre de places totales du trajet
+        $query = 'SELECT nombre_places FROM ' . $this->table . ' WHERE trajet_id = :trajet_id LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':trajet_id', $trajet_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null; // Trajet non trouvé
+        }
+        $nombre_places = (int)$row['nombre_places'];
+
+        // Récupérer le nombre de places déjà réservées
+        $queryRes = 'SELECT SUM(nombre_places_reservees) AS places_reservees FROM reservations WHERE trajet_id = :trajet_id AND statut IN ("confirmée", "en_attente")';
+        $stmtRes = $this->conn->prepare($queryRes);
+        $stmtRes->bindParam(':trajet_id', $trajet_id, PDO::PARAM_INT);
+        $stmtRes->execute();
+        $rowRes = $stmtRes->fetch(PDO::FETCH_ASSOC);
+        $places_reservees = isset($rowRes['places_reservees']) ? (int)$rowRes['places_reservees'] : 0;
+
+        // Calculer le nombre de places restantes
+        $places_restantes = $nombre_places - $places_reservees;
+        return max($places_restantes, 0); // Jamais négatif
+            
+        }
 
     public function read_by_user($utilisateur_id) {
         $query = 'SELECT * FROM ' . $this->table . ' WHERE utilisateur_id = ?';
