@@ -1,5 +1,39 @@
 <?php
 class Reservation {
+    // Récupérer toutes les réservations (tableau associatif)
+    public function readAll() {
+        $query = 'SELECT * FROM ' . $this->table;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Récupérer une réservation par son ID
+    public function readOne($id) {
+        $query = 'SELECT * FROM ' . $this->table . ' WHERE reservation_id = ? LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $row : null;
+    }
+    /**
+     * Récupérer les emails des participants d'un trajet (hors réservations annulées)
+     */
+    public function getParticipantsEmails($trajet_id) {
+        $query = 'SELECT u.email
+                  FROM ' . $this->table . ' r
+                  JOIN utilisateurs u ON r.utilisateur_id = u.utilisateur_id
+                  WHERE r.trajet_id = ? AND r.statut != "annulée"';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$trajet_id]);
+        $emails = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($row['email'])) {
+                $emails[] = $row['email'];
+            }
+        }
+        return $emails;
+    }
     // Connexion et table
     private $conn;
     private $table = 'reservations';
