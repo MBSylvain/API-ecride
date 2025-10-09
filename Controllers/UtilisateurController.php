@@ -5,6 +5,7 @@ require_once '../config/session.php';
 include_once '../config/Database.php';
 include_once '../models/Utilisateur.php';
 include_once '../Controllers/checkAuth.php';
+include_once '../models/Credit.php';
 
 
 // Initialisation de la base de données
@@ -56,10 +57,10 @@ function registerUser($data, $utilisateur) {
         $_SESSION['email'] = $utilisateur->email;
         $_SESSION['role'] = $utilisateur->role;
         // Crédits de bienvenue
-         $credit = new Credit($utilisateur->conn);
+        $credit = new Credit($utilisateur->conn);
         $credit->utilisateur_id = $utilisateur->utilisateur_id;
         $credit->montant = 20;
-        $credit->type_operation = 'bonus_inscription';
+        $credit->type_operation = 'offert';
         $credit->commentaire = 'Crédits offerts à l\'inscription';
         $credit->createCredit();
 
@@ -251,8 +252,24 @@ switch ($method) {
         }
         if (isset($data->action) && $data->action === 'register') {
             registerUser($data, $utilisateur);
+            // crédit de bienvenue géré dans registerUser
+            // nettoyer la session pour éviter les conflits
             session_destroy();
+            // redémarrer la session avec les données de l'utilisateur
             session_start();
+            $_SESSION['utilisateur_id'] = $utilisateur->utilisateur_id;
+            $_SESSION['nom'] = $utilisateur->nom;
+            $_SESSION['email'] = $utilisateur->email;
+            $_SESSION['role'] = $utilisateur->role;
+
+            if(registerUser($data, $_SESSION['utilisateur_id'])) {
+                // Crédits de bienvenue
+                $credit = new Credit($utilisateur->conn);
+                $credit->utilisateur_id = $_SESSION['utilisateur_id'];
+                $credit->montant = 30; // Montant du crédit de bienvenue
+                $credit->createCredit();
+            }
+
         } else if (isset($data->action) && $data->action === 'logout') {
             logoutUser();
         } else if (isset($data->email) && isset($data->password)) {
