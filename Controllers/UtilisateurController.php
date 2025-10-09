@@ -17,50 +17,52 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 
 
+
 // Fonction utilitaire pour nettoyer les entrées
 function sanitize($input) {
     return htmlspecialchars(strip_tags(trim($input)));
 }
 
-/**
- * Gère l'inscription d'un nouvel utilisateur
- */
-function handleRegistration($data, $utilisateur) {
-    // Validation des données requises
-    if (empty($data->nom) || empty($data->mot_de_passe)) {
+// Inscription utilisateur
+function registerUser($data, $utilisateur) {
+    if (empty($data->nom) || empty($data->mot_de_passe) || empty($data->email)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Nom et mot de passe sont requis']);
+        echo json_encode(['success' => false, 'message' => 'Nom, email et mot de passe sont requis']);
         exit;
     }
-
-    if (empty($data->email)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Email est requis']);
-        exit;
-    }
-
-    // Vérification de la correspondance des mots de passe
     if ($data->mot_de_passe !== $data->confirm_password) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Les mots de passe ne correspondent pas']);
         exit;
     }
-
-    // Assignation des données utilisateur
     $utilisateur->nom = sanitize($data->nom);
     $utilisateur->prenom = sanitize($data->prenom ?? '');
     $utilisateur->email = sanitize($data->email);
-    $utilisateur->password = $data->mot_de_passe; // Le hash est fait dans create()
+    $utilisateur->password = $data->mot_de_passe;
     $utilisateur->telephone = !empty($data->telephone) ? sanitize($data->telephone) : null;
     $utilisateur->adresse = !empty($data->adresse) ? sanitize($data->adresse) : null;
     $utilisateur->date_naissance = !empty($data->date_naissance) ? sanitize($data->date_naissance) : null;
     $utilisateur->pseudo = !empty($data->pseudo) ? sanitize($data->pseudo) : null;
     $utilisateur->role = sanitize($data->role ?? 'utilisateur');
-
-    // Création du compte
     if ($utilisateur->create()) {
         http_response_code(201);
         echo json_encode(['success' => true, 'message' => 'Compte créé avec succès']);
+        // nettoyer la session pour éviter les conflits
+        session_destroy();
+        // redémarrer la session avec les données de l'utilisateur
+        session_start();
+        $_SESSION['utilisateur_id'] = $utilisateur->utilisateur_id;
+        $_SESSION['nom'] = $utilisateur->nom;
+        $_SESSION['email'] = $utilisateur->email;
+        $_SESSION['role'] = $utilisateur->role;
+        // Crédits de bienvenue
+         $credit = new Credit($utilisateur->conn);
+        $credit->utilisateur_id = $utilisateur->utilisateur_id;
+        $credit->montant = 20;
+        $credit->type_operation = 'bonus_inscription';
+        $credit->commentaire = 'Crédits offerts à l\'inscription';
+        $credit->createCredit();
+
     } else {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Échec de la création du compte']);
@@ -68,40 +70,30 @@ function handleRegistration($data, $utilisateur) {
     exit;
 }
 
-/**
- * Gère la connexion d'un utilisateur existant - CORRIGÉ
- */
-function handleLogin($data, $utilisateur) {
-    // Validation des données requises
+// Connexion utilisateur
+function loginUser($data, $utilisateur) {
     if (empty($data->email) || empty($data->password)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Email et mot de passe sont requis']);
         exit;
     }
-
-    // Tentative de connexion
     $utilisateur->email = sanitize($data->email);
     $utilisateur->password = $data->password;
-    
     if ($utilisateur->login()) {
-        // ✅ CORRECTION : Mettre à jour la session APRÈS la vérification du login
         $_SESSION['utilisateur_id'] = $utilisateur->utilisateur_id;
         $_SESSION['nom'] = $utilisateur->nom;
         $_SESSION['email'] = $utilisateur->email;
         $_SESSION['role'] = $utilisateur->role;
-
         $_SESSION['last_activity'] = time();
-        
         http_response_code(200);
         echo json_encode([
-            'success' => true, 
+            'success' => true,
             'message' => 'Connexion réussie',
             'user' => [
                 'id' => $utilisateur->utilisateur_id,
                 'nom' => $utilisateur->nom,
                 'email' => $utilisateur->email,
                 'role' => $utilisateur->role
-
             ]
         ]);
     } else {
@@ -111,14 +103,9 @@ function handleLogin($data, $utilisateur) {
     exit;
 }
 
-/**
- * Gère la déconnexion
- */
-function handleLogout() {
-    // Destruction de la session
+// Déconnexion utilisateur
+function logoutUser() {
     $_SESSION = array();
-
-    // Suppression du cookie de session
     if (ini_get("session.use_cookies")) {
         $params = session_get_cookie_params();
         setcookie(session_name(), '', time() - 42000,
@@ -131,6 +118,94 @@ function handleLogout() {
     exit;
 }
 
+// Récupérer l'utilisateur courant (par ID session)
+function getCurrentUser($utilisateur) {
+    if (!isset($_SESSION['utilisateur_id'])) {
+        http_response_code(401);
+        echo json_encode(['message' => 'Non authentifié']);
+        exit;
+    }
+    $utilisateur->utilisateur_id = $_SESSION['utilisateur_id'];
+    if ($utilisateur->read_single()) {
+        $response = [
+            'utilisateur_id' => $utilisateur->utilisateur_id,
+            'nom' => $utilisateur->nom,
+            'prenom' => $utilisateur->prenom,
+            'email' => $utilisateur->email,
+            'telephone' => $utilisateur->telephone,
+            'adresse' => $utilisateur->adresse,
+            'date_naissance' => $utilisateur->date_naissance,
+            'pseudo' => $utilisateur->pseudo,
+            'role' => $utilisateur->role,
+            'date_inscription' => $utilisateur->date_inscription
+        ];
+        echo json_encode($response);
+    } else {
+        http_response_code(404);
+        echo json_encode(['message' => 'Utilisateur non trouvé']);
+    }
+    exit;
+}
+
+// Mettre à jour l'utilisateur courant
+function updateCurrentUser($data, $utilisateur) {
+    if (!isset($_SESSION['utilisateur_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Non authentifié']);
+        exit;
+    }
+    if (empty($data->nom) || empty($data->email)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Nom et email sont requis']);
+        exit;
+    }
+    $utilisateur->utilisateur_id = $_SESSION['utilisateur_id'];
+    $utilisateur->nom = sanitize($data->nom);
+    $utilisateur->prenom = isset($data->prenom) ? sanitize($data->prenom) : null;
+    $utilisateur->email = sanitize($data->email);
+    $utilisateur->telephone = isset($data->telephone) ? sanitize($data->telephone) : null;
+    $utilisateur->adresse = isset($data->adresse) ? sanitize($data->adresse) : null;
+    $utilisateur->date_naissance = isset($data->date_naissance) ? sanitize($data->date_naissance) : null;
+    $utilisateur->pseudo = isset($data->pseudo) ? sanitize($data->pseudo) : null;
+    if (!empty($data->password)) {
+        $utilisateur->password = $data->password;
+    }
+    if ($utilisateur->update()) {
+        $_SESSION['nom'] = $utilisateur->nom;
+        $_SESSION['email'] = $utilisateur->email;
+        echo json_encode([
+            'success' => true,
+            'message' => 'Utilisateur mis à jour',
+            'utilisateur_id' => $utilisateur->utilisateur_id
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Échec de la mise à jour'
+        ]);
+    }
+    exit;
+}
+
+// Supprimer l'utilisateur courant
+function deleteCurrentUser($utilisateur) {
+    if (!isset($_SESSION['utilisateur_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Non authentifié']);
+        exit;
+    }
+    $utilisateur->utilisateur_id = $_SESSION['utilisateur_id'];
+    if ($utilisateur->delete()) {
+        session_destroy();
+        echo json_encode(['success' => true, 'message' => 'Utilisateur supprimé']);
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Échec de la suppression']);
+    }
+    exit;
+}
+
 // === ROUTEUR PRINCIPAL CORRIGÉ ===
 
 // Récupération des données selon la méthode
@@ -138,193 +213,70 @@ $data = null;
 $action = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
     $contentType = isset($_SERVER["CONTENT_TYPE"]) ? $_SERVER["CONTENT_TYPE"] : "";
-
-    if (strpos($contentType, "application/json") !== false) {
-        $data = json_decode(file_get_contents("php://input"));
+    if (stripos($contentType, "application/json") !== false) {
+        $json = file_get_contents("php://input");
+        $tmp = json_decode($json);
+        // Si le front envoie { data: { ... } } (cas axios), on prend $tmp->data si présent
+        if (isset($tmp->data) && is_object($tmp->data)) {
+            $data = $tmp->data;
+        } else {
+            $data = $tmp;
+        }
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            echo json_encode(['message' => 'JSON invalide', 'error' => json_last_error_msg(), 'raw' => $json]);
+            exit;
+        }
     } else {
-        // Pour les formulaires standards
         $data = (object)$_POST;
     }
     // Associer la valeur de action à celle de la méthode si présente
-    if (isset($data->action) && !empty($data->action)) {
-        $method = strtoupper($data->action);
-    }
+    //if (isset($data->action) && !empty($data->action)) {
+     //   $method = strtoupper($data->action);
+    //}
 }
 
 switch ($method) {
     case 'GET':
-        // ✅ CORRECTION : Vérification d'authentification simplifiée
-        verifyAuth(); // Utilisateur doit être authentifié pour les GET
-        
-        // Lecture par utilisateur_id
-        if (isset($_GET['utilisateur_id'])) {
-            $utilisateur->utilisateur_id = sanitize($_GET['utilisateur_id']);
-            if ($utilisateur->read_single()) {
-                $response = [
-                    'utilisateur_id' => $utilisateur->utilisateur_id,
-                    'nom' => $utilisateur->nom,
-                    'prenom' => $utilisateur->prenom,
-                    'email' => $utilisateur->email,
-                    'telephone' => $utilisateur->telephone,
-                    'adresse' => $utilisateur->adresse,
-                    'date_naissance' => $utilisateur->date_naissance,
-                    'pseudo' => $utilisateur->pseudo,
-                    'role' => $utilisateur->role,
-                    'date_inscription' => $utilisateur->date_inscription
-                ];
-                echo json_encode($response);
-            } else {
-                http_response_code(404);
-                echo json_encode(['message' => 'Utilisateur non trouvé']);
-            }
-        } 
-        // Lecture par email
-        else if (isset($_GET['email'])) {
-            $utilisateur->email = sanitize($_GET['email']);
-            if ($utilisateur->read_by_email()) {
-                $response = [
-                    'utilisateur_id' => $utilisateur->utilisateur_id,
-                    'nom' => $utilisateur->nom,
-                    'prenom' => $utilisateur->prenom,
-                    'email' => $utilisateur->email,
-                    'telephone' => $utilisateur->telephone,
-                    'adresse' => $utilisateur->adresse,
-                    'date_naissance' => $utilisateur->date_naissance,
-                    'pseudo' => $utilisateur->pseudo,
-                    'role' => $utilisateur->role,
-                    'date_inscription' => $utilisateur->date_inscription
-                ];
-                echo json_encode($response);
-            } else {
-                http_response_code(404);
-                echo json_encode(['message' => 'Utilisateur non trouvé']);
-            }
-        } 
-        
-
-
-
-        // Lecture de tous les utilisateurs (admin seulement)
-        else {
-            // Vérifier si l'utilisateur est admin
-            if ($_SESSION['role'] !== 'Administrateur') {
-                http_response_code(403);
-                echo json_encode(['message' => 'Accès non autorisé']);
-                exit;
-            }
-            
-            $result = $utilisateur->read();
-            if (is_array($result) && count($result) > 0) {
-                echo json_encode($result);
-            } else {
-                http_response_code(404);
-                echo json_encode(['message' => 'Aucun utilisateur trouvé']);
-            }
-        }
+        // Récupérer l'utilisateur courant (auth obligatoire)
+        verifyAuth();
+        getCurrentUser($utilisateur);
         break;
 
     case 'POST':
-        // Pas de verifyAuth() ici - permet l'inscription et la connexion
-        
         if (!$data) {
             http_response_code(400);
             echo json_encode(['message' => 'Données manquantes']);
             exit;
         }
-        
-        // Vérifier l'action pour différencier connexion, inscription, déconnexion
-        if (isset($data->action)) {
-            switch ($data->action) {
-                case 'register':
-                    handleRegistration($data, $utilisateur);
-                    break;
-                case 'logout':
-                    handleLogout();
-                    break;
-                default:
-                    // Si action non reconnue, tentative de connexion standard
-                    if (isset($data->email) && isset($data->password)) {
-                        handleLogin($data, $utilisateur);
-                    } else {
-                        http_response_code(400);
-                        echo json_encode(['message' => 'Action non reconnue ou données manquantes']);
-                    }
-            }
-        } 
-        // Tentative de connexion standard (sans action spécifique)
-        else if (isset($data->email) && isset($data->password)) {
-            handleLogin($data, $utilisateur);
+        if (isset($data->action) && $data->action === 'register') {
+            registerUser($data, $utilisateur);
+            session_destroy();
+            session_start();
+        } else if (isset($data->action) && $data->action === 'logout') {
+            logoutUser();
+        } else if (isset($data->email) && isset($data->password)) {
+            loginUser($data, $utilisateur);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'Données requises manquantes']);
+            echo json_encode(['message' => 'Données requises manquantes ou action non reconnue']);
         }
         break;
 
     case 'PUT':
-        // ✅ CORRECTION : Vérification d'authentification
         verifyAuth();
-        
         if (!$data) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Données manquantes']);
             exit;
         }
-
-        // Validation des données obligatoires
-        if (empty($data->nom) || empty($data->email)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Nom et email sont requis']);
-            exit;
-        }
-
-        // Assignation des valeurs
-        $utilisateur->utilisateur_id = $_SESSION['utilisateur_id'];
-        $utilisateur->nom = sanitize($data->nom);
-        $utilisateur->prenom = isset($data->prenom) ? sanitize($data->prenom) : null;
-        $utilisateur->email = sanitize($data->email);
-        $utilisateur->telephone = isset($data->telephone) ? sanitize($data->telephone) : null;
-        $utilisateur->adresse = isset($data->adresse) ? sanitize($data->adresse) : null;
-        $utilisateur->date_naissance = isset($data->date_naissance) ? sanitize($data->date_naissance) : null;
-        $utilisateur->pseudo = isset($data->pseudo) ? sanitize($data->pseudo) : null;
-
-        // Gestion spécifique du mot de passe
-        if (!empty($data->password)) {
-            $utilisateur->password = $data->password;
-        }
-
-        // Exécution de la mise à jour
-        if ($utilisateur->update()) {
-            // Mettre à jour aussi les données de session si nécessaire
-            $_SESSION['nom'] = $utilisateur->nom;
-            $_SESSION['email'] = $utilisateur->email;
-            
-            echo json_encode([
-                'success' => true,
-                'message' => 'Utilisateur mis à jour',
-                'utilisateur_id' => $utilisateur->utilisateur_id
-            ]);
-        } else {
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Échec de la mise à jour'
-            ]);
-        }
+        updateCurrentUser($data, $utilisateur);
         break;
+        
 
     case 'DELETE':
-        // ✅ CORRECTION : Vérification d'authentification
         verifyAuth();
-        
-        $utilisateur->utilisateur_id = $_SESSION['utilisateur_id'];
-
-        if ($utilisateur->delete()) {
-            session_destroy();
-            echo json_encode(['success' => true, 'message' => 'Utilisateur supprimé']);
-        } else {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Échec de la suppression']);
-        }
+        deleteCurrentUser($utilisateur);
         break;
 
     default:
