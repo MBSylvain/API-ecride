@@ -1,3 +1,19 @@
+    // Récupérer tous les avis (admin)
+    public function readAll() {
+        $query = "SELECT * FROM avis";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Valider ou refuser un avis (admin)
+    public function updateStatut() {
+        $query = "UPDATE avis SET statut = :statut WHERE avis_id = :avis_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':statut', $this->statut);
+        $stmt->bindValue(':avis_id', $this->avis_id);
+        return $stmt->execute();
+    }
 <?php
 class Avis {
     private $conn;
