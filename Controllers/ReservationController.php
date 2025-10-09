@@ -126,8 +126,8 @@ switch ($method) {
         break;
 
     case 'POST':
+        // Récupérer les données
         $data = json_decode(file_get_contents("php://input"));
-        
         // Vérification des données reçues
         if (!$data || !isset($data->utilisateur_id) || !isset($data->trajet_id) || !isset($data->nombre_places_reservees)) {
             http_response_code(400);
@@ -139,41 +139,88 @@ switch ($method) {
             ]);
             break;
         }
-        // Ajout: action de validation
-        if (isset($data->action) && $data->action === 'validate') {
-            if (!isset($data->reservation_id) || !isset($data->status)) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Données invalides ou incomplètes']);
-                break;
-            }
-            $reservation->reservation_id = $data->reservation_id;
-            $statut = $data->status === 'valide' ? 'confirmée' : 'refusée';
-            $reservation->statut = $statut;
-            if ($statut === 'confirmée') {
-                $reservation->date_confirmation = date('Y-m-d H:i:s');
-            }
-            if ($reservation->update()) {
-                // Récupérer l'email de l'utilisateur concerné
-                if ($reservation->read_single()) {
-                    $datautilisateur = $reservation->read_single($reservation->utilisateur_id);
-                    $email_utilisateur = $datautilisateur['email'] ?? null; 
-                    $subject = ($statut === 'confirmée') ? "Votre réservation a été validée" : "Votre réservation a été refusée";
-                    $message = ($statut === 'confirmée') ?
-                        "Bonjour, votre réservation pour le trajet a été validée." :
-                        "Bonjour, votre réservation pour le trajet a été refusée.";
-                    $headers = "From: noreply@tonsite.com\r\nContent-Type: text/plain; charset=UTF-8";
-                    if ($email_utilisateur) {
-                        mail($email_utilisateur, $subject, $message, $headers);
-                    }
-                }
-                echo json_encode(['message' => 'Statut de la réservation mis à jour et email envoyé']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Échec de la mise à jour']);
-            }
+
+        // Vérification des crédits disponibles
+        // On suppose qu'il existe un modèle Credit avec une méthode getCreditsByUser($utilisateur_id)
+        include_once '../models/Credit.php';
+        $creditModel = new Credit($db);
+        $credits = $creditModel->getCreditsByUser($data->utilisateur_id);
+        if ($credits < 1) { // À adapter selon le coût réel d'une réservation
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Crédits insuffisants pour effectuer la réservation'
+            ]);
             break;
         }
+
+        // Vérification des places disponibles
+        include_once '../models/Trajet.php';
+        $trajetModel = new Trajet($db);
+        $trajet_id = intval($data->trajet_id);
+        $trajet = $trajetModel->read_single_trajet($trajet_id);
+        if (!$trajet) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Trajet non trouvé']);
+            break;
+        }
+        // Calcul des places restantes
+        include_once '../models/Reservation.php';
+        $reservationModel = new Reservation($db);
+        $reservations = $reservationModel->read_by_trajet($data->trajet_id);
+        $places_restantes = $trajetModel->getPlacesRestantes($trajet_id);
+        $trajet['places_restantes'] = $places_restantes;
+        $nombre_places_reservees = intval($data->nombre_places_reservees);
+        //echo json_encode('place Reservee: '.$nombre_places_reservees/$trajet['prix']);
+        $places_Reservees = $nombre_places_reservees/$trajet['prix'];
+
+        // Validation 1: Places disponibles suffisantes
+        // Validation 0: Aucune place disponible
+        if ($places_restantes == 0) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Aucune place disponible pour ce trajet',
+            ]);
+            exit;
+        }
+
+    // Validation 1: Places disponibles suffisantes
+    if ($places_Reservees > $trajet['places_restantes']) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Pas assez de places disponibles pour cette réservation',
+            'places_demandees' => $places_Reservees,
+            'places_restantes' => $places_restantes
+        ]);
+        exit;
+    }
+
+    // Validation 2: Réservation existante
+    $existingReservation = $reservationModel->read_by_user_and_trajet($data->utilisateur_id, $data->trajet_id);
+    if ($existingReservation) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Vous avez déjà une réservation pour ce trajet',
+            'reservation_id' => $existingReservation['id']
+        ]);
+        exit;
+    }
+
+    // Toutes les validations sont passées
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Réservation possible',
+        'places_demandees' => $places_Reservees,
+        'places_restantes' => $places_restantes,
+        'trajet_id' => $data->trajet_id
+    ]);
+    exit;
         
+
         // Attribution des données
         $reservation->utilisateur_id = $data->utilisateur_id;
         $reservation->trajet_id = $data->trajet_id;
@@ -183,12 +230,20 @@ switch ($method) {
         $reservation->commentaire = isset($data->commentaire) ? $data->commentaire : null;
         $reservation->bagages = isset($data->bagages) ? $data->bagages : 0;
 
+        // Double confirmation (exemple simple)
+        // Ici, on suppose qu'une réservation doit être confirmée par le conducteur après la demande
+        // On crée la réservation avec statut 'en_attente', puis le conducteur doit la valider (statut 'confirmée')
+
         if ($reservation->create()) {
+            // Débit des crédits utilisateur et plateforme
+            // On suppose une méthode debitCredit($utilisateur_id, $montant, $type_operation)
+            $creditModel->debitCredit($data->utilisateur_id, 1, 'utilisation'); // Débit utilisateur
+            // Suppression du débit plateforme pour éviter l'erreur de contrainte
+
             http_response_code(201);
             echo json_encode([
                 'success' => true,
-                'message' => 'Réservation créée avec succès',
-                'reservation_id' => $reservation->reservation_id
+                'message' => 'Réservation créée avec succès, en attente de confirmation du conducteur',
             ]);
         } else {
             http_response_code(500);
@@ -198,6 +253,7 @@ switch ($method) {
             ]);
         }
         break;
+    
 
     case 'PUT':
         $data = json_decode(file_get_contents("php://input"));
@@ -257,8 +313,30 @@ switch ($method) {
 
         $reservation->reservation_id = $data->reservation_id;
 
+        // Récupérer la réservation avant suppression pour envoyer le mail et créditer l'utilisateur
+        $reservationDetails = $reservation->read_single();
+        $utilisateur_id = $reservationDetails['utilisateur_id'] ?? null;
+        $trajet_id = $reservationDetails['trajet_id'] ?? null;
+
         if($reservation->delete()) {
-            echo json_encode(['message' => 'Réservation supprimée']);
+            // Créditer l'utilisateur en cas d'annulation
+            include_once '../models/Credit.php';
+            $creditModel = new Credit($db);
+            $creditModel->debitCredit($utilisateur_id, 1, 'annulation');
+
+            // Envoi de mail aux participants si annulation par le chauffeur
+            // On suppose une méthode getParticipantsEmails($trajet_id) qui retourne les emails des participants
+            if ($trajet_id) {
+                $participants = $reservation->getParticipantsEmails($trajet_id);
+                $subject = "Annulation du trajet";
+                $message = "Bonjour, le trajet auquel vous avez réservé a été annulé. Vos crédits ont été mis à jour.";
+                $headers = "From: noreply@tonsite.com\r\nContent-Type: text/plain; charset=UTF-8";
+                foreach ($participants as $email) {
+                    mail($email, $subject, $message, $headers);
+                }
+            }
+
+            echo json_encode(['message' => 'Réservation supprimée, crédits mis à jour et mails envoyés']);
         } else {
             echo json_encode(['message' => 'Échec de la suppression']);
         }
@@ -269,4 +347,5 @@ switch ($method) {
         echo json_encode(['message' => 'Méthode non autorisée']);
         break;
 }
+
 ?>
