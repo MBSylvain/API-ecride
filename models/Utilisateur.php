@@ -17,6 +17,8 @@ class Utilisateur {
     public $date_inscription;
     public $compte_actif;
     public $date_modification;
+    
+
 
 
 
@@ -143,7 +145,7 @@ class Utilisateur {
         }
     }
     public function read() {
-        $query = "SELECT utilisateur_id, nom, prenom, email FROM utilisateurs";
+        $query = "SELECT utilisateur_id, nom, prenom, email, FROM utilisateurs";
         $stmt = $this->conn->query($query);
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retourne directement un array
     }
@@ -286,4 +288,5 @@ public function getRoles() {
 }
 
 }
+
 ?>
