@@ -141,15 +141,31 @@ switch ($method) {
         }
 
         // Vérification des crédits disponibles
-        // On suppose qu'il existe un modèle Credit avec une méthode getCreditsByUser($utilisateur_id)
         include_once '../models/Credit.php';
         $creditModel = new Credit($db);
-        $credits = $creditModel->getCreditsByUser($data->utilisateur_id);
-        if ($credits < 1) { // À adapter selon le coût réel d'une réservation
+        $creditRows = $creditModel->getCreditsByUser($data->utilisateur_id);
+        $soldeCredits = 0;
+        foreach ($creditRows as $row) {
+            $soldeCredits += floatval($row['montant']);
+        }
+        // Calcul du montant de la réservation (exemple simple)
+        include_once '../models/Trajet.php';
+        $trajetModel = new Trajet($db);
+        $trajet = $trajetModel->read_single_trajet(intval($data->trajet_id));
+        if (!$trajet) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Trajet non trouvé']);
+            break;
+        }
+        $prixParPlace = $trajet['prix'];
+        $montantReservation = $data->nombre_places_reservees; //** */ $prixParPlace*/;
+        if ($soldeCredits < $montantReservation) {
             http_response_code(403);
             echo json_encode([
                 'success' => false,
-                'message' => 'Crédits insuffisants pour effectuer la réservation'
+                'message' => 'Crédits insuffisants pour effectuer la réservation',
+                'solde' => $soldeCredits,
+                'montant_requis' => $montantReservation
             ]);
             break;
         }
