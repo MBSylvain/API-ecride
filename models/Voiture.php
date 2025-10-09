@@ -1,5 +1,21 @@
 <?php
 class Voiture {
+    // Récupérer toutes les voitures (tableau associatif)
+    public function readAll() {
+        $query = 'SELECT * FROM ' . $this->table;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Récupérer une voiture par son ID
+    public function readOne($id) {
+        $query = 'SELECT * FROM ' . $this->table . ' WHERE voiture_id = ? LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $row : null;
+    }
     private $conn;
     private $table = 'voiture';
 
