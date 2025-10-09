@@ -2,6 +2,7 @@
 // Credit.php
 // Modèle pour la table credits
 class Credit {
+   
     public $credit_id;
     public $utilisateur_id;
     public $montant;
@@ -62,5 +63,26 @@ class Credit {
         $stmt->bindParam(':credit_id', $credit_id);
         return $stmt->execute();
     }
+
+    // Obtenir le solde total des crédits d'un utilisateur
+    public function getSoldeCredits($utilisateur_id) {
+        $query = "SELECT SUM(montant) as solde FROM credits WHERE utilisateur_id = :utilisateur_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':utilisateur_id', $utilisateur_id);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int)$row['solde'] : 0;
+    }
+
+    // Débiter ou créditer un utilisateur
+    public function debitCredit($utilisateur_id, $montant, $type_operation, $commentaire = null) {
+        $query = "INSERT INTO credits (utilisateur_id, montant, type_operation, commentaire) VALUES (:utilisateur_id, :montant, :type_operation, :commentaire)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':utilisateur_id', $utilisateur_id);
+        $stmt->bindParam(':montant', $montant);
+        $stmt->bindParam(':type_operation', $type_operation);
+        $stmt->bindParam(':commentaire', $commentaire);
+        return $stmt->execute();
+    }
 }
-?>
+
