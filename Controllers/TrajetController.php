@@ -72,7 +72,7 @@ switch ($method) {
             if ($results && !empty($results)) {
                 echo json_encode($results);
             } else {
-                http_response_code(404);
+                http_response_code(201);
                 echo json_encode([
                     'message' => 'Trajet non trouvé',
                     'error' => true
