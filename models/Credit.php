@@ -1,6 +1,5 @@
 <?php
-// Credit.php
-// Modèle pour la table credits
+
 class Credit {
    
     public $credit_id;
