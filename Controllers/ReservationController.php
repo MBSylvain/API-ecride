@@ -148,7 +148,7 @@ switch ($method) {
         foreach ($creditRows as $row) {
             $soldeCredits += floatval($row['montant']);
         }
-        // Calcul du montant de la réservation (exemple simple)
+        // Calcul du montant de la réservation
         include_once '../models/Trajet.php';
         $trajetModel = new Trajet($db);
         $trajet = $trajetModel->read_single_trajet(intval($data->trajet_id));
@@ -158,7 +158,7 @@ switch ($method) {
             break;
         }
         $prixParPlace = $trajet['prix'];
-        $montantReservation = $data->nombre_places_reservees; //** */ $prixParPlace*/;
+        $montantReservation = $data->nombre_places_reservees; //*Je renvoie le montant de la reservation;
         if ($soldeCredits < $montantReservation) {
             http_response_code(403);
             echo json_encode([
