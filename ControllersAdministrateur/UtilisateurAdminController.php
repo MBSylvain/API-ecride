@@ -15,7 +15,40 @@ $database = new Database();
 $db = $database->connect();
 $utilisateur = new Utilisateur($db);
 
+// Détection robuste de la méthode HTTP (support PATCH via POST, _method, action, etc.)
 $method = $_SERVER['REQUEST_METHOD'];
+// Si POST mais méthode surchargée (ex: _method=PATCH ou action=PATCH)
+if ($method === 'POST') {
+    // 1. Vérifie un champ _method dans POST ou GET
+    if (isset($_POST['_method'])) {
+        $method = strtoupper($_POST['_method']);
+    } elseif (isset($_GET['_method'])) {
+        $method = strtoupper($_GET['_method']);
+    }
+    // 2. Vérifie un champ action explicite dans POST ou GET
+    elseif (isset($_POST['action'])) {
+        $action = strtoupper($_POST['action']);
+        if (in_array($action, ['PATCH', 'PUT', 'DELETE'])) {
+            $method = $action;
+        }
+    } elseif (isset($_GET['action'])) {
+        $action = strtoupper($_GET['action']);
+        if (in_array($action, ['PATCH', 'PUT', 'DELETE'])) {
+            $method = $action;
+        }
+    }
+    // 3. Vérifie dans le body JSON
+    else {
+        $raw = file_get_contents('php://input');
+        $json = json_decode($raw);
+        if (isset($json->_method)) {
+            $method = strtoupper($json->_method);
+        } elseif (isset($json->action) && in_array(strtoupper($json->action), ['PATCH', 'PUT', 'DELETE'])) {
+            $method = strtoupper($json->action);
+        }
+    }
+}
+
 
 switch ($method) {
     case 'GET':
@@ -110,4 +143,4 @@ switch ($method) {
         http_response_code(405);
         echo json_encode(['success' => false, 'message' => 'Méthode non autorisée']);
         break;
-}
+};
