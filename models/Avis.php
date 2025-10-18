@@ -135,6 +135,14 @@ class Avis {
         return $stmt;
     }
 
+    public function readByStatut($statut) {
+        $query = 'SELECT * FROM ' . $this->table . ' WHERE statut = ?';
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $statut);
+        $stmt->execute();
+        return $stmt;
+    }
+
     public function update() {
         $query = 'UPDATE ' . $this->table . ' 
             SET utilisateur_id = :utilisateur_id, commentaire = :commentaire, 
