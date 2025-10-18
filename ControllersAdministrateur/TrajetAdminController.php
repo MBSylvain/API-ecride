@@ -4,7 +4,7 @@ require_once '../config/Database.php';
 require_once '../ModelAdministrateur/Trajet.php';
 require_once '../Controllers/checkAuth.php';
 
-if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'Administrateur' && $_SESSION['role'] !== 'Employe')) {
+if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'Administrateur' && $_SESSION['role'] !== 'Modérateur' && $_SESSION['role'] !== 'Employe')) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Accès réservé à l\'administrateur ou employé']);
     exit;
@@ -21,8 +21,8 @@ switch ($method) {
         // Admin : tous les trajets, Employé : trajets problématiques uniquement
         if ($_SESSION['role'] === 'Administrateur') {
             $result = $trajet->readAll();
-        } else {
-            // Employé : ne voir que les trajets signalés/problématiques (exemple)
+        } else  if ($_SESSION['role'] === 'Modérateur') {
+            // Modérateur : ne voir que les trajets signalés/problématiques (exemple)
             $result = $trajet->readProblemes();
         }
         echo json_encode($result);
