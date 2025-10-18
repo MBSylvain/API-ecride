@@ -58,7 +58,7 @@ class Statistique {
         $stmt1 = $this->conn->prepare($sql1);
         $stmt1->execute();
         $stats['covoiturages_par_jour'] = $stmt1->fetchAll(PDO::FETCH_ASSOC);
-        $sql2 = "SELECT DATE(date_action) as jour, SUM(montant) as credits_gagnes FROM historique_action WHERE type_action = 'gain' GROUP BY jour ORDER BY jour DESC LIMIT 30";
+        $sql2 = "SELECT DATE(date_operation) as jour, SUM(montant) as credits_gagnes FROM credits WHERE type_operation = 'ajout' GROUP BY jour ORDER BY jour DESC LIMIT 30";
         $stmt2 = $this->conn->prepare($sql2);
         $stmt2->execute();
         $stats['credits_gagnes_par_jour'] = $stmt2->fetchAll(PDO::FETCH_ASSOC);
@@ -78,6 +78,14 @@ class Statistique {
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Nombre de compte par jours (utilisateurs et employés)
+    public function getNbComptesParJour() {
+        $sql = "SELECT DATE(date_inscription) as jour, COUNT(*) as nb FROM utilisateurs GROUP BY jour ORDER BY jour DESC LIMIT 30";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Statistiques sur les trajets (en cours, terminés, annulés)
