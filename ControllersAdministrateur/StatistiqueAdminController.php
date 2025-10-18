@@ -1,8 +1,9 @@
 <?php
 require_once '../config/session.php';
 require_once '../config/Database.php';
-require_once '../models/administrateur/Statistique.php';
+require_once '../ModelAdministrateur/Statistique.php';
 require_once '../Controllers/checkAuth.php';
+
 
 if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'Administrateur' && $_SESSION['role'] !== 'Employe')) {
     http_response_code(403);
@@ -25,6 +26,11 @@ switch ($method) {
                 case 'utilisateurs':
                     $result = $stat->getNbUtilisateurs();
                     break;
+                                
+                case 'comptes_par_jour':
+                    $result = $stat->getNbComptesParJour();
+                    break;
+
                 case 'employes':
                     $result = $stat->getNbEmployes();
                     break;
