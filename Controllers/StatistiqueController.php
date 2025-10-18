@@ -117,13 +117,13 @@ switch ($method) {
             if ($action === 'credits') {
                 $stats = [];
                 // Total crédits gagnés
-                $query = "SELECT SUM(montant) as total_credits FROM historique_actions WHERE type_action = 'gain_credit'";
+                $query = "SELECT SUM(montant) as total_credits FROM credits WHERE type_operation = 'ajout'";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
                 $stats['total_credits'] = $stmt->fetch(PDO::FETCH_ASSOC)['total_credits'];
 
                 // Crédits gagnés par jour (30 derniers jours)
-                $query = "SELECT DATE(date_action) as jour, SUM(montant) as credits FROM historique_actions WHERE type_action = 'gain_credit' GROUP BY jour ORDER BY jour DESC LIMIT 30";
+                $query = "SELECT DATE(date_operation) as jour, SUM(montant) as credits FROM credits WHERE type_operation = 'ajout' GROUP BY jour ORDER BY jour DESC LIMIT 30";
                 $stmt = $db->prepare($query);
                 $stmt->execute();
                 $stats['credits_par_jour'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
