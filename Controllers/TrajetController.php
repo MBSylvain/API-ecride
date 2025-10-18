@@ -40,13 +40,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $ville_depart = isset($_GET['ville_depart']) ? htmlspecialchars($_GET['ville_depart']) : '';
 $ville_arrivee = isset($_GET['ville_arrivee']) ? htmlspecialchars($_GET['ville_arrivee']) : '';
 $date_depart = isset($_GET['date_depart']) ? htmlspecialchars($_GET['date_depart']) : '';
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'PUT') {
-    $method = 'PUT';
-
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'DELETE') {
-    $method = 'DELETE';
-
-    
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action'])) {
+        if ($_POST['action'] === 'PUT') {
+            $method = 'PUT';
+        } elseif ($_POST['action'] === 'DELETE') {
+            $method = 'DELETE';
+        } elseif ($_POST['action'] === 'STATUTS') {
+            $method = 'STATUTS';
+        } else {
+            $method = $_SERVER['REQUEST_METHOD'];
+        }
+    } elseif (isset($data['action'])) {
+        if ($data['action'] === 'PUT') {
+            $method = 'PUT';
+        } elseif ($data['action'] === 'DELETE') {
+            $method = 'DELETE';
+        } elseif ($data['action'] === 'STATUTS') {
+            $method = 'STATUTS';
+        } else {
+            $method = $_SERVER['REQUEST_METHOD'];
+        }
+    } else {
+        $method = $_SERVER['REQUEST_METHOD'];
+    }
 } else {
     $method = $_SERVER['REQUEST_METHOD'];
 }
@@ -106,39 +123,41 @@ case 'SEARCH':
     if ($ville_depart !== null || $ville_arrivee !== null || $date_depart !== null || $prix_max !== null || $note_min !== null || $ecologique !== null) {
         $result = $trajet->filtre_by_searchbar($ville_depart, $ville_arrivee, $date_depart, $prix_max, $note_min, $ecologique);
 
-        if ($result && !empty($result)) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'Trajets trouvés',
-                'data' => $result
-            ]);
-        } else {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Aucun trajet trouvé',
-                'data' => []
-            ]);
-        }
+       if ($result && !empty($result)) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'Trajets trouvés',
+            'data' => $result
+        ]);
+    } else if ($date_depart) {
+        // Si aucun trajet trouvé, proposer des alternatives ±3 jours
+        $date = new DateTime($date_depart);
+        $date_min = $date->modify('-3 days')->format('Y-m-d');
+        $date_max = (new DateTime($date_depart))->modify('+3 days')->format('Y-m-d');
+        $alternatives = $trajet->filtre_by_searchbar($ville_depart, $ville_arrivee, null, $prix_max, $note_min, $ecologique);
+
+        // Filtrer les alternatives sur la plage de dates
+        $suggestions = array_filter($alternatives, function($t) use ($date_min, $date_max) {
+            return $t['date_depart'] >= $date_min && $t['date_depart'] <= $date_max;
+        });
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Aucun trajet trouvé à la date demandée. Voici des alternatives proches.',
+            'data' => [],
+            'suggestions' => ($suggestions)
+        ]);
     } else {
-        // Aucun paramètre fourni - retourner tous les trajets ou une erreur
-        $result = $trajet->filtre_by_searchbar(null, null, null, null, null, null);
-        if ($result) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'Tous les trajets récupérés',
-                'data' => $result
-            ]);
-        } else {
             echo json_encode([
                 'success' => false,
                 'message' => 'Aucun trajet disponible',
                 'data' => []
             ]);
         }
+        break;
     }
-break;
-            
-    case 'POST':
+    
+        case 'POST':
         // Récupération des données du formulaire
         $data = json_decode(file_get_contents("php://input"));
         // Validation
@@ -175,6 +194,14 @@ break;
                 'message' => 'Trajet créé avec succès',
                 'trajet_id' => $trajet->trajet_id
             ]);
+            // Mouvement débit/crédit pour création de trajet
+            include_once '../models/Credit.php';
+            $credit = new Credit($db);
+            $credit->utilisateur_id = $utilisateur_id;
+            $credit->montant = -$trajet->prix;
+            $credit->type_operation = 'Création de trajet';
+            $credit->commentaire = 'Débit pour création de trajet ID ' . $trajet->trajet_id;
+            $credit->debitCredit($utilisateur_id, $credit->montant, $credit->type_operation, $credit->commentaire);
         } else {
             http_response_code(500);
             echo json_encode(['message' => 'Échec de la création du trajet']);
@@ -256,22 +283,70 @@ break;
         break;
 
     case 'DELETE':
-        // Récupérer l'ID depuis l'URL ou le corps de la requête
-$trajet_id = isset($_GET['trajet_id']) ? $_GET['trajet_id'] : 
-            (isset($data['trajet_id']) ? $data['trajet_id'] : null);
-
-if (!$trajet_id) {
-    http_response_code(400);
-    echo json_encode(array('message' => 'ID de trajet manquant'));
-    break;
+        // Récupérer l'ID depuis l'URL, le body (json ou x-www-form-urlencoded), ou l'input brut
+        $trajet_id = null;
+        if (isset($_GET['trajet_id'])) {
+            $trajet_id = $_GET['trajet_id'];
+        } elseif (isset($data['trajet_id'])) {
+            $trajet_id = $data['trajet_id'];
+        } else {
+            // Fallback : parser l'input brut (utile pour certains clients DELETE)
+            $rawInput = file_get_contents('php://input');
+            if ($rawInput) {
+                parse_str($rawInput, $deleteVars);
+                if (isset($deleteVars['trajet_id'])) {
+                    $trajet_id = $deleteVars['trajet_id'];
+                }
+            }
         }
 
-        $trajet->trajet_id = $data['trajet_id'];
+        if (!$trajet_id) {
+            http_response_code(400);
+            echo json_encode(array('message' => 'ID de trajet manquant'));
+            exit;
+        }
+
+        $trajet->trajet_id = $trajet_id;
         if ($trajet->delete()) {
             echo json_encode(array('message' => 'Trajet supprimé'));
         } else {
             http_response_code(500);
             echo json_encode(array('message' => 'Échec de la suppression'));
+        }
+        break;
+    case 'STATUTS':
+        // Decode as object, not array (remove the 'true' parameter)
+        $data = json_decode(file_get_contents('php://input'));
+        if (isset($data->trajet_id) && isset($data->statut)) {
+            $trajet->trajet_id = $data->trajet_id;
+            if ($trajet->read_single()) {
+                $statutActuel = $trajet->statut;
+                $nouveauStatut = $data->statut;
+                // Vérification et mise à jour du statut
+                $statuts_valides = ['planifié', 'en_cours', 'terminé'];
+                if (in_array($nouveauStatut, $statuts_valides)) {
+                    $trajet->statut = $nouveauStatut;
+                    if ($trajet->update()) {
+                        echo json_encode(array('success' => true, 'status' => $trajet->statut));
+                    } else {
+                        http_response_code(500);
+                        echo json_encode(array('success' => false, 'message' => 'Erreur lors de la mise à jour du statut.'));
+                    }
+                } else {
+                    http_response_code(400);
+                    echo json_encode(array('success' => false, 'message' => 'Statut non valide.'));
+                }
+            } else {
+                http_response_code(404);
+                echo json_encode(array('success' => false, 'message' => 'Trajet non trouvé.'));
+            }
+        } else if (isset($data->trajet_id)) {
+            $trajet->trajet_id = $data->trajet_id;
+            $trajet->read_single();
+            echo json_encode(array('status' => $trajet->statut));
+        } else {
+            http_response_code(400);
+            echo json_encode(array('message' => 'ID de trajet manquant'));
         }
         break;
 }
