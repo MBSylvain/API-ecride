@@ -1,7 +1,7 @@
 <?php
 require_once '../config/session.php';
 require_once '../config/Database.php';
-require_once '../models/Reservation.php';
+require_once '../Models/Reservation.php';
 require_once '../Controllers/checkAuth.php';
 
 if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'Administrateur' && $_SESSION['role'] !== 'Employe')) {
@@ -19,8 +19,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 switch ($method) {
     case 'GET':
         // Liste ou détail d'une réservation
-        if (isset($_GET['id'])) {
-            $result = $reservation->readOne($_GET['id']);
+        if (isset($_GET['reservation_id'])) {
+            $result = $reservation->readOne($_GET['reservation_id']);
         } else {
             $result = $reservation->readAll();
         }
@@ -50,13 +50,14 @@ switch ($method) {
             echo json_encode(['success' => false, 'message' => 'Seul un administrateur peut supprimer une réservation']);
             exit;
         }
-        if (!isset($_GET['id'])) {
+        if (!isset($_GET['reservation_id'])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'ID requis']);
             exit;
         }
-        $result = $reservation->delete($_GET['id']);
-        echo json_encode($result);
+        $reservation->reservation_id = $_GET['reservation_id'];
+        $result = $reservation->delete();
+        echo json_encode(['success' => $result]);
         break;
     default:
         http_response_code(405);
