@@ -50,12 +50,13 @@ switch ($method) {
             echo json_encode(['success' => false, 'message' => 'Seul un administrateur peut supprimer une voiture']);
             exit;
         }
-        if (!isset($_GET['id'])) {
+        if (!isset($_GET['voiture_id'])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'ID requis']);
             exit;
         }
-        $result = $voiture->delete($_GET['id']);
+        $voiture->voiture_id = $_GET['voiture_id'];
+        $result = $voiture->delete();
         echo json_encode($result);
         break;
     default:
