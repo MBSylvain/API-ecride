@@ -257,11 +257,11 @@ class Reservation {
         $stmt->bindParam(1, $this->reservation_id);
         
         if($stmt->execute()) {
-            return true;
+            return  ['success' => true];
         }
         
         printf("Erreur: %s.\n", $stmt->error);
-        return false;
+        return ['success' => false];
     }
 }
 ?>
