@@ -64,6 +64,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	}
 	$success = $stmt->execute();
 	if ($success) {
+		// Notification ajout préférences
+		require_once '../utils/NotificationMails.php';
+		require_once '../models/Utilisateur.php';
+		$utilisateurModel = new Utilisateur($db);
+		$utilisateurModel->utilisateur_id = $utilisateur_id;
+		$result = $utilisateurModel->read_single();
+		$user = null;
+		if ($result === true) {
+			$user = [
+				'email' => $utilisateurModel->email,
+				'prenom' => $utilisateurModel->prenom,
+				'nom' => $utilisateurModel->nom
+			];
+		}
+		if ($user && isset($user['email'])) {
+			sendPreferenceAdded($user['email'], $user);
+		}
 		echo json_encode(['success' => true, 'message' => 'Préférences ajoutées']);
 	} else {
 		echo json_encode(['success' => false, 'message' => 'Erreur lors de l\'ajout']);
@@ -86,6 +103,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 	$stmt->bindValue(":preference_id", $preference_id);
 	$success = $stmt->execute();
 	if ($success && $stmt->rowCount() > 0) {
+		// Notification modification préférence
+		require_once '../utils/NotificationMails.php';
+		require_once '../models/Utilisateur.php';
+		// On suppose qu'on peut retrouver l'utilisateur via la table (jointure ou requête supplémentaire)
+		$sqlUser = "SELECT utilisateur_id FROM preferences_conducteur WHERE preference_id = :preference_id";
+		$stmtUser = $db->prepare($sqlUser);
+		$stmtUser->bindValue(":preference_id", $preference_id);
+		$stmtUser->execute();
+		$rowUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
+		$user = null;
+		if ($rowUser && isset($rowUser['utilisateur_id'])) {
+			$utilisateurModel = new Utilisateur($db);
+			$utilisateurModel->utilisateur_id = $rowUser['utilisateur_id'];
+			$result = $utilisateurModel->read_single();
+			if ($result === true) {
+				$user = [
+					'email' => $utilisateurModel->email,
+					'prenom' => $utilisateurModel->prenom,
+					'nom' => $utilisateurModel->nom
+				];
+			}
+		}
+		if ($user && isset($user['email'])) {
+			sendPreferenceUpdated($user['email'], $user, $preference_id, $valeur);
+		}
 		echo json_encode(['success' => true, 'message' => 'Préférence modifiée']);
 	} else {
 		echo json_encode(['success' => false, 'message' => 'Aucune modification ou préférence inexistante']);
@@ -101,6 +143,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($_GET['preference_id'])) {
 	$stmt->bindValue(":preference_id", $preference_id);
 	$success = $stmt->execute();
 	if ($success && $stmt->rowCount() > 0) {
+		// Notification suppression préférence
+		require_once '../utils/NotificationMails.php';
+		require_once '../models/Utilisateur.php';
+		// On suppose qu'on peut retrouver l'utilisateur via la table (jointure ou requête supplémentaire)
+		$sqlUser = "SELECT utilisateur_id FROM preferences_conducteur WHERE preference_id = :preference_id";
+		$stmtUser = $db->prepare($sqlUser);
+		$stmtUser->bindValue(":preference_id", $preference_id);
+		$stmtUser->execute();
+		$rowUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
+		$user = null;
+		if ($rowUser && isset($rowUser['utilisateur_id'])) {
+			$utilisateurModel = new Utilisateur($db);
+			$utilisateurModel->utilisateur_id = $rowUser['utilisateur_id'];
+			$result = $utilisateurModel->read_single();
+			if ($result === true) {
+				$user = [
+					'email' => $utilisateurModel->email,
+					'prenom' => $utilisateurModel->prenom,
+					'nom' => $utilisateurModel->nom
+				];
+			}
+		}
+		if ($user && isset($user['email'])) {
+			sendPreferenceDeleted($user['email'], $user, $preference_id);
+		}
 		echo json_encode(['success' => true, 'message' => 'Préférence supprimée']);
 	} else {
 		echo json_encode(['success' => false, 'message' => 'Suppression impossible ou préférence inexistante']);

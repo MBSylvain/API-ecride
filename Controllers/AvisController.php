@@ -190,6 +190,27 @@ switch ($method) {
     $avis->utilisateur_id = $data->utilisateur_id ?? null; // Ajout du champ utilisateur_id
 
         if($avis->create()) {
+            require_once '../utils/NotificationMails.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $data->destinataire_id;
+            if ($utilisateurModel->read_single()) {
+                $destinataire = [
+                    'email' => $utilisateurModel->email,
+                    'prenom' => $utilisateurModel->prenom,
+                    'nom' => $utilisateurModel->nom
+                ];
+                // Notification selon le statut
+                if ($avis->statut === 'publié') {
+                    sendAvisNotification($destinataire['email'], $destinataire, $data->note, $data->commentaire);
+                } elseif ($avis->statut === 'modéré') {
+                    // Notification à l'employé pour validation
+                    // À adapter : récupérer l'employé concerné
+                    // sendAvisEnAttenteValidation($employeEmail, $avisArr, $employeArr);
+                } elseif ($avis->statut === 'signalé') {
+                    // Notification à l'employé pour signalement
+                    // sendAvisSignale($employeEmail, $employeArr, $avisArr);
+                }
+            }
             http_response_code(201);
             echo json_encode(array('message' => 'Avis créé'));
         } else {
@@ -230,6 +251,37 @@ if(isset($data->statut)) {
 }
 
 if($avis->update()) {
+    require_once '../utils/NotificationMails.php';
+    // Récupérer l'auteur et le destinataire
+    $auteurModel = new Utilisateur($db);
+    $auteurModel->utilisateur_id = $avis->auteur_id;
+    $auteur = null;
+    if ($auteurModel->read_single()) {
+        $auteur = [
+            'email' => $auteurModel->email,
+            'prenom' => $auteurModel->prenom,
+            'nom' => $auteurModel->nom
+        ];
+    }
+    $destinataireModel = new Utilisateur($db);
+    $destinataireModel->utilisateur_id = $avis->destinataire_id;
+    $destinataire = null;
+    if ($destinataireModel->read_single()) {
+        $destinataire = [
+            'email' => $destinataireModel->email,
+            'prenom' => $destinataireModel->prenom,
+            'nom' => $destinataireModel->nom
+        ];
+    }
+    // Notification selon le nouveau statut
+    if ($avis->statut === 'publié' && $destinataire) {
+        sendAvisValide($destinataire['email'], $destinataire, [ 'note' => $avis->note, 'commentaire' => $avis->commentaire ]);
+    } elseif ($avis->statut === 'modéré' && $auteur) {
+        sendAvisRefuseOuModere($auteur['email'], $auteur, [ 'note' => $avis->note, 'commentaire' => $avis->commentaire ]);
+    } elseif ($avis->statut === 'signalé') {
+        // Notification à l'employé pour signalement
+        // sendAvisSignale($employeEmail, $employeArr, [ 'note' => $avis->note, 'commentaire' => $avis->commentaire ]);
+    }
     http_response_code(200);
     echo json_encode(array('message' => 'Avis mis à jour'));
 } else {
@@ -250,6 +302,18 @@ if($avis->update()) {
         $avis->avis_id = $data->avis_id;
 
         if($avis->delete()) {
+            require_once '../utils/NotificationMails.php';
+            // Récupérer l'auteur
+            $auteurModel = new Utilisateur($db);
+            $auteurModel->utilisateur_id = $avis->auteur_id;
+            if ($auteurModel->read_single()) {
+                $auteur = [
+                    'email' => $auteurModel->email,
+                    'prenom' => $auteurModel->prenom,
+                    'nom' => $auteurModel->nom
+                ];
+                sendAvisSupprime($auteur['email'], $auteur, [ 'note' => $avis->note, 'commentaire' => $avis->commentaire ]);
+            }
             http_response_code(200);
             echo json_encode(array('message' => 'Avis supprimé'));
         } else {

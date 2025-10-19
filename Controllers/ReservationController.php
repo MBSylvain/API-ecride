@@ -252,10 +252,23 @@ switch ($method) {
 
         if ($reservation->create()) {
             // Débit des crédits utilisateur et plateforme
-            // On suppose une méthode debitCredit($utilisateur_id, $montant, $type_operation)
             $creditModel->debitCredit($data->utilisateur_id, 1, 'utilisation'); // Débit utilisateur
-            // Suppression du débit plateforme pour éviter l'erreur de contrainte
-
+            // Notification création réservation
+            require_once '../utils/NotificationMails.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $data->utilisateur_id;
+            $result = $utilisateurModel->read_single();
+            $user = null;
+            if ($result === true) {
+                $user = [
+                    'email' => $utilisateurModel->email,
+                    'prenom' => $utilisateurModel->prenom,
+                    'nom' => $utilisateurModel->nom
+                ];
+            }
+            if ($user && isset($user['email'])) {
+                sendReservationCreated($user['email'], $trajet, $user);
+            }
             http_response_code(201);
             echo json_encode([
                 'success' => true,
@@ -311,6 +324,36 @@ switch ($method) {
         }
 
         if ($reservation->update()) {
+            // Notification selon le statut ou modification
+            require_once '../utils/NotificationMails.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $reservation->utilisateur_id;
+            $result = $utilisateurModel->read_single();
+            $user = null;
+            if ($result === true) {
+                $user = [
+                    'email' => $utilisateurModel->email,
+                    'prenom' => $utilisateurModel->prenom,
+                    'nom' => $utilisateurModel->nom
+                ];
+            }
+            include_once '../models/Trajet.php';
+            $trajetModel = new Trajet($db);
+            $trajet = $trajetModel->read_single_trajet($reservation->trajet_id);
+            if ($user && isset($user['email'])) {
+                if (isset($data->statut)) {
+                    if ($data->statut == 'confirmée') {
+                        sendReservationConfirmation($user['email'], $trajet, $user);
+                    } elseif ($data->statut == 'refusée') {
+                        sendReservationRefused($user['email'], $trajet, $user);
+                    } elseif ($data->statut == 'annulée') {
+                        sendReservationCancellation($user['email'], $trajet, $user);
+                    }
+                } else {
+                    // Notification modification
+                    sendReservationModified($user['email'], $trajet, $user, json_encode($data));
+                }
+            }
             echo json_encode(['message' => 'Réservation mise à jour']);
         } else {
             http_response_code(500);
@@ -339,19 +382,32 @@ switch ($method) {
             include_once '../models/Credit.php';
             $creditModel = new Credit($db);
             $creditModel->debitCredit($utilisateur_id, 1, 'annulation');
-
+            // Notification annulation réservation
+            require_once '../utils/NotificationMails.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $utilisateur_id;
+            $result = $utilisateurModel->read_single();
+            $user = null;
+            if ($result === true) {
+                $user = [
+                    'email' => $utilisateurModel->email,
+                    'prenom' => $utilisateurModel->prenom,
+                    'nom' => $utilisateurModel->nom
+                ];
+            }
+            include_once '../models/Trajet.php';
+            $trajetModel = new Trajet($db);
+            $trajet = $trajetModel->read_single_trajet($trajet_id);
+            if ($user && isset($user['email'])) {
+                sendReservationCancellation($user['email'], $trajet, $user);
+            }
             // Envoi de mail aux participants si annulation par le chauffeur
-            // On suppose une méthode getParticipantsEmails($trajet_id) qui retourne les emails des participants
             if ($trajet_id) {
                 $participants = $reservation->getParticipantsEmails($trajet_id);
-                $subject = "Annulation du trajet";
-                $message = "Bonjour, le trajet auquel vous avez réservé a été annulé. Vos crédits ont été mis à jour.";
-                $headers = "From: noreply@tonsite.com\r\nContent-Type: text/plain; charset=UTF-8";
                 foreach ($participants as $email) {
-                    mail($email, $subject, $message, $headers);
+                    sendReservationCancellation($email, $trajet, $user);
                 }
             }
-
             echo json_encode(['message' => 'Réservation supprimée, crédits mis à jour et mails envoyés']);
         } else {
             echo json_encode(['message' => 'Échec de la suppression']);
