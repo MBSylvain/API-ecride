@@ -202,6 +202,25 @@ case 'SEARCH':
             $credit->type_operation = 'Création de trajet';
             $credit->commentaire = 'Débit pour création de trajet ID ' . $trajet->trajet_id;
             $credit->debitCredit($utilisateur_id, $credit->montant, $credit->type_operation, $credit->commentaire);
+            // Notification création trajet
+            require_once '../utils/NotificationMails.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $utilisateur_id;
+            $result = $utilisateurModel->read_single();
+            $user = null;
+            if ($result === true) {
+                $user = [
+                    'email' => $utilisateurModel->email,
+                    'prenom' => $utilisateurModel->prenom,
+                    'nom' => $utilisateurModel->nom
+                ];
+            }
+            if ($user && isset($user['email'])) {
+                sendTrajetCreationConfirmation($user['email'], [
+                    'ville_depart' => $trajet->ville_depart,
+                    'ville_arrivee' => $trajet->ville_arrivee
+                ], $user);
+            }
         } else {
             http_response_code(500);
             echo json_encode(['message' => 'Échec de la création du trajet']);
@@ -249,7 +268,18 @@ case 'SEARCH':
         if ($trajet->update()) {
             // After update, fetch the updated record
             $trajet->read_single();
-            
+            // Notification modification trajet
+            require_once '../utils/NotificationMails.php';
+            // On suppose une méthode getParticipantsEmails($trajet_id) sur le modèle Reservation
+            include_once '../models/Reservation.php';
+            $reservationModel = new Reservation($db);
+            $participants = $reservationModel->getParticipantsEmails($trajet->trajet_id);
+            foreach ($participants as $email) {
+                sendTrajetModification($email, [
+                    'ville_depart' => $trajet->ville_depart,
+                    'ville_arrivee' => $trajet->ville_arrivee
+                ], ['prenom' => 'Participant']);
+            }
             http_response_code(200);
             echo json_encode([
                 'success' => true,
@@ -272,8 +302,6 @@ case 'SEARCH':
                     'utilisateur_id' => $trajet->utilisateur_id,
                     'voiture_id' => $trajet->voiture_id,
                     'date_creation' => $trajet->date_creation,
-
-                    // Add other fields as needed
                 ]
             ]);
         } else {
@@ -308,6 +336,17 @@ case 'SEARCH':
 
         $trajet->trajet_id = $trajet_id;
         if ($trajet->delete()) {
+            // Notification annulation trajet
+            require_once '../utils/NotificationMails.php';
+            include_once '../models/Reservation.php';
+            $reservationModel = new Reservation($db);
+            $participants = $reservationModel->getParticipantsEmails($trajet->trajet_id);
+            foreach ($participants as $email) {
+                sendTrajetCancellation($email, [
+                    'ville_depart' => $trajet->ville_depart,
+                    'ville_arrivee' => $trajet->ville_arrivee
+                ], ['prenom' => 'Participant']);
+            }
             echo json_encode(array('message' => 'Trajet supprimé'));
         } else {
             http_response_code(500);
@@ -327,6 +366,24 @@ case 'SEARCH':
                 if (in_array($nouveauStatut, $statuts_valides)) {
                     $trajet->statut = $nouveauStatut;
                     if ($trajet->update()) {
+                        // Notification selon le statut
+                        require_once '../utils/NotificationMails.php';
+                        include_once '../models/Reservation.php';
+                        $reservationModel = new Reservation($db);
+                        $participants = $reservationModel->getParticipantsEmails($trajet->trajet_id);
+                        foreach ($participants as $email) {
+                            if ($nouveauStatut === 'en_cours') {
+                                sendTrajetStart($email, [
+                                    'ville_depart' => $trajet->ville_depart,
+                                    'ville_arrivee' => $trajet->ville_arrivee
+                                ], ['prenom' => 'Participant']);
+                            } elseif ($nouveauStatut === 'terminé') {
+                                sendTrajetArrival($email, [
+                                    'ville_depart' => $trajet->ville_depart,
+                                    'ville_arrivee' => $trajet->ville_arrivee
+                                ], ['prenom' => 'Participant']);
+                            }
+                        }
                         echo json_encode(array('success' => true, 'status' => $trajet->statut));
                     } else {
                         http_response_code(500);
