@@ -1,21 +1,7 @@
+    
 <?php
 class Voiture {
-    // Récupérer toutes les voitures (tableau associatif)
-    public function readAll() {
-        $query = 'SELECT * FROM ' . $this->table;
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // Récupérer une voiture par son ID
-    public function readOne($id) {
-        $query = 'SELECT * FROM ' . $this->table . ' WHERE voiture_id = ? LIMIT 1';
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([$id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ? $row : null;
-    }
+   
     private $conn;
     private $table = 'voiture';
 
@@ -40,6 +26,15 @@ class Voiture {
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt;
+    }
+
+    // Vérifie si une immatriculation existe déjà
+    public function immatriculationExists($immatriculation) {
+        $query = "SELECT voiture_id FROM voiture WHERE immatriculation = :immatriculation";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(":immatriculation", $immatriculation);
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
     }
 
 public function read_single() {
@@ -69,6 +64,23 @@ public function read_single() {
     // Retourne les données
     return $row;
 }
+
+ // Récupérer toutes les voitures (tableau associatif)
+    public function readAll() {
+        $query = 'SELECT * FROM ' . $this->table;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Récupérer une voiture par son ID
+    public function readOne($id) {
+        $query = 'SELECT * FROM ' . $this->table . ' WHERE voiture_id = ? LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $row : null;
+    }
 
     public function read_marque() {
         $query = 'SELECT m.* FROM marque m 
