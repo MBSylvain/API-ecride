@@ -1,3 +1,7 @@
+<?php
+// utils/NotificationMails.php
+require_once __DIR__ . '/Mailer.php';
+
 // === Notifications liées aux signalements ===
 
 // 1. Notification de création de signalement (à l'admin ou équipe)
@@ -30,9 +34,7 @@ function sendSignalementResolution($to, $signalement, $user) {
     $body = "Bonjour {$user['prenom']},<br>Votre signalement (motif : <b>{$signalement['motif']}</b>) a été résolu. Décision : <b>{$signalement['statut']}</b>. Merci pour votre vigilance.";
     return sendMail($to, $subject, $body);
 }
-<?php
-// utils/NotificationMails.php
-require_once __DIR__ . '/Mailer.php';
+
 
 // 1. Confirmation de réservation
 function sendReservationConfirmation($to, $trajet, $user) {
@@ -239,5 +241,18 @@ function sendCreditMovement($to, $user, $montant, $type_operation) {
 function sendCreditExpired($to, $user) {
     $subject = "Crédit expiré ou supprimé";
     $body = "Bonjour {$user['prenom']},<br>Un ou plusieurs crédits ont expiré ou ont été supprimés de votre compte EcoRide.";
+    return sendMail($to, $subject, $body);
+}
+
+// Notification générique pour les actions sur une voiture
+function sendVoitureNotification($to, $user, $voiture, $action) {
+    $actionLabels = [
+        'création' => "ajoutée",
+        'modification' => "modifiée",
+        'suppression' => "supprimée"
+    ];
+    $label = isset($actionLabels[$action]) ? $actionLabels[$action] : $action;
+    $subject = "Votre voiture a été $label";
+    $body = "Bonjour {$user['prenom']},<br>La voiture <b>{$voiture->modele} ({$voiture->immatriculation})</b> a été $label sur votre compte EcoRide.";
     return sendMail($to, $subject, $body);
 }
