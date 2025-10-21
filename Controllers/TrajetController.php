@@ -275,7 +275,7 @@ case 'SEARCH':
             $reservationModel = new Reservation($db);
             $participants = $reservationModel->getParticipantsEmails($trajet->trajet_id);
             foreach ($participants as $email) {
-                sendTrajetModification($email, [
+                $notifSent = sendTrajetModification($email, [
                     'ville_depart' => $trajet->ville_depart,
                     'ville_arrivee' => $trajet->ville_arrivee
                 ], ['prenom' => 'Participant']);
@@ -302,6 +302,7 @@ case 'SEARCH':
                     'utilisateur_id' => $trajet->utilisateur_id,
                     'voiture_id' => $trajet->voiture_id,
                     'date_creation' => $trajet->date_creation,
+                    'notification_envoyee' => $notifSent
                 ]
             ]);
         } else {
