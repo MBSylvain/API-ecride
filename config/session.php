@@ -1,7 +1,6 @@
 <?php
-// === CORRECTION : Vérifier si la session n'est pas déjà active ===
+// Démarrage sécurisé de la session si non active
 if (session_status() === PHP_SESSION_NONE) {
-    // Configuration des sessions (UNIQUEMENT si session pas encore démarrée)
     session_set_cookie_params([
         'lifetime' => 24 * 60 * 60, // 24 heures
         'path' => '/',
@@ -10,23 +9,19 @@ if (session_status() === PHP_SESSION_NONE) {
         'httponly' => true,
         'samesite' => 'Lax'
     ]);
-    
-    // Démarrer la session
     session_start();
 }
 
-// En-têtes CORS
+// En-têtes CORS pour l'accès API depuis le front-end
 header("Access-Control-Allow-Origin: http://localhost:3000");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
 header("Access-Control-Max-Age: 3600");
 
-// Gérer les requêtes OPTIONS (pré-vol CORS)
+// Réponse immédiate pour les requêtes OPTIONS (pré-vol CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
-
-
 ?>

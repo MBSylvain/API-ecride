@@ -1,30 +1,3 @@
-<?php
-// En-têtes CORS
-header("Access-Control-Allow-Origin: http://localhost:3000");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Access-Control-Allow-Credentials: true");
-header("Access-Control-Max-Age: 3600");
-
-require_once '../config/session.php';
-
-// Inclusions
-include_once '../config/Database.php';
-include_once '../models/Utilisateur.php';
-include_once '../Controllers/checkAuth.php';
-include_once '../models/Avis.php';
-
-$database = new Database();
-$db = $database->connect();
-
-$avis = new Avis($db);
-
-// Vérifiez l'authentification
-verifyAuth();
-
-$method = $_SERVER['REQUEST_METHOD'];
-
-switch ($method) {
     case 'GET':
         if(isset($_GET['id'])) {
             $avis->avis_id = $_GET['id'];
