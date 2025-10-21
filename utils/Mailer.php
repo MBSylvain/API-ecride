@@ -15,14 +15,14 @@ use PHPMailer\PHPMailer\Exception;
  * @param string $from Adresse d'expédition (optionnel)
  * @return bool true si succès, false sinon
  */
-function sendMail($to, $subject, $body, $from = 'noreply@ecoride.com') {
+function sendMail($to, $subject, $body, $from = 'noreply.ecorides@gmail.com') {
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com'; // À adapter
+        $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
-        $mail->Username = 'ton.email@gmail.com'; // À adapter
-        $mail->Password = 'ton_mot_de_passe';    // À adapter
+        $mail->Username = 'noreply.ecorides@gmail.com';
+        $mail->Password = 'cbva lggj dren zrny ';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
@@ -35,6 +35,8 @@ function sendMail($to, $subject, $body, $from = 'noreply@ecoride.com') {
         $mail->send();
         return true;
     } catch (Exception $e) {
+        // Affiche l'erreur PHPMailer directement (utile pour debug)
+        echo '<b>Mailer Error:</b> ' . $mail->ErrorInfo;
         error_log('Mailer Error: ' . $mail->ErrorInfo);
         return false;
     }
