@@ -6,6 +6,7 @@ include_once '../config/Database.php';
 include_once '../models/Utilisateur.php';
 include_once '../Controllers/checkAuth.php';
 include_once '../models/Voiture.php';
+include_once '../utils/NotificationMails.php';
 
 // Initialize database connection
 $database = new Database();
@@ -192,11 +193,31 @@ break;
         $voiture->description = $data->description ?? null;
         $voiture->utilisateur_id = $utilisateur_id;
 
+        // Vérification unicité immatriculation via le modèle
+        if ($voiture->immatriculationExists($voiture->immatriculation)) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'Immatriculation déjà utilisée']);
+            exit;
+        }
+
         // Create the car and handle the relationship
         if ($voiture->create()) {
-                        
+            // Notification création voiture
+            require_once '../utils/NotificationMails.php';
+            require_once '../models/Utilisateur.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $utilisateur_id;
+            $utilisateurModel->read_single();
+            $user = [
+                'email' => $utilisateurModel->email,
+                'prenom' => $utilisateurModel->prenom,
+                'nom' => $utilisateurModel->nom
+            ];
+            if ($user && isset($user['email'])) {
+                $notifSent = sendVoitureNotification($user['email'], $user, $voiture, 'création');
+            }
             http_response_code(201);
-            echo json_encode(['message' => 'Voiture créée avec succès', 'voiture_id' => $voiture->voiture_id]);
+            echo json_encode(['message' => 'Voiture créée avec succès', 'voiture_id' => $voiture->voiture_id, 'notification_envoyee' => $notifSent]);
         } else {
             http_response_code(500);
             echo json_encode(array('message' => 'Échec de la création'));
@@ -241,7 +262,20 @@ break;
         ]));
 
         if ($voiture->update()) {
-           // http_response_code(200);
+            // Notification modification voiture
+            require_once '../utils/NotificationMails.php';
+            require_once '../models/Utilisateur.php';
+            $utilisateurModel = new Utilisateur($db);
+            $utilisateurModel->utilisateur_id = $utilisateur_id;
+            $utilisateurModel->read_single();
+            $user = [
+                'email' => $utilisateurModel->email,
+                'prenom' => $utilisateurModel->prenom,
+                'nom' => $utilisateurModel->nom
+            ];
+            if ($user && isset($user['email'])) {
+            }
+            $notifSent = sendVoitureNotification($user['email'], $user, $voiture, 'modification');
             echo json_encode([
                 'success' => true,
                 'message' => 'Voiture mise à jour avec succès',
@@ -253,7 +287,8 @@ break;
                 'date_premiere_immatriculation' => $voiture->date_premiere_immatriculation,
                 'nombre_places' => $voiture->nombre_places,
                 'photo_url' => $voiture->photo_url,
-                'description' => $voiture->description
+                'description' => $voiture->description,
+                'notification_envoyee' => $notifSent
             ]);
 
         } else {
@@ -291,10 +326,27 @@ break;
 
     // Tentative de suppression
     if ($voiture->delete()) {
+        // Notification suppression voiture
+        require_once '../utils/NotificationMails.php';
+        require_once '../models/Utilisateur.php';
+        $utilisateurModel = new Utilisateur($db);
+        $utilisateurModel->utilisateur_id = $utilisateur_id;
+        $utilisateurModel->read_single();
+        $user = [
+            'email' => $utilisateurModel->email,
+            'prenom' => $utilisateurModel->prenom,
+            'nom' => $utilisateurModel->nom
+        ];
+        if ($user && isset($user['email'])) {
+        }
         http_response_code(200);
+        $notifSent = sendVoitureNotification($user['email'], $user
+        , $voiture, 'suppression');
+
         echo json_encode([
             'message' => 'Voiture supprimée avec succès',
-            'deleted_id' => $voiture_id
+            'deleted_id' => $voiture_id,
+            'notification_envoyee' => $notifSent
         ]);
     } else {
         http_response_code(500);
