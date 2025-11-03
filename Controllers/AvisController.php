@@ -1,3 +1,25 @@
+<?php
+
+
+require_once '../config/session.php';
+
+// Inclusions
+include_once '../config/Database.php';
+include_once '../models/Utilisateur.php';
+include_once '../Controllers/checkAuth.php';
+include_once '../models/Avis.php';
+
+$database = new Database();
+$db = $database->connect();
+
+$avis = new Avis($db);
+
+// Vérifiez l'authentification
+verifyAuth();
+
+$method = $_SERVER['REQUEST_METHOD'];
+
+switch ($method) {
     case 'GET':
         if(isset($_GET['id'])) {
             $avis->avis_id = $_GET['id'];
@@ -43,7 +65,7 @@
                 echo json_encode(array('message' => 'Aucun avis trouvé pour cet auteur'));
             }
         } elseif(isset($_GET['destinataire_id'])) {
-            // Get reviews by recipient
+            // récupérer les avis par destinataire
             $avis->destinataire_id = $_GET['destinataire_id'];
             $result = $avis->read_by_destinataire();
             $num = $result->rowCount();
