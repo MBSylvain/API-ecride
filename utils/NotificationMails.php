@@ -2,7 +2,6 @@
 // utils/NotificationMails.php
 require_once __DIR__ . '/Mailer.php';
 
-// === Notifications liées aux signalements ===
 
 // 1. Notification de création de signalement (à l'admin ou équipe)
 function sendSignalementCreationNotification($to, $signalement, $user) {
@@ -156,7 +155,6 @@ function sendTrajetReminder($to, $trajet, $user) {
     return sendMail($to, $subject, $body);
 }
 
-// 14. Notification
 // === Notifications liées aux avis ===
 
 // 1. Notification nouvel avis reçu
@@ -202,8 +200,6 @@ function sendAvisSupprime($to, $user, $avis) {
 }
 
 
-// === Notifications liées aux préférences conducteur ===
-
 // Préférences ajoutées
 function sendPreferenceAdded($to, $user) {
     $subject = "Préférences conducteur ajoutées";
@@ -224,9 +220,6 @@ function sendPreferenceDeleted($to, $user, $preference) {
     $body = "Bonjour {$user['prenom']},<br>Votre préférence <b>{$preference}</b> a été supprimée de votre profil conducteur.";
     return sendMail($to, $subject, $body);
 }
-
-
-// === Notifications liées aux crédits ===
 
 // Mouvement de crédit (ajout, retrait, remboursement...)
 function sendCreditMovement($to, $user, $montant, $type_operation) {
