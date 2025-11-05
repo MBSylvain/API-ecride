@@ -1,26 +1,19 @@
-
 FROM php:8.1-apache
 
-# Installer les extensions PHP
-RUN docker-php-ext-install mysqli pdo pdo_mysql
+# Installer les extensions PHP nécessaires
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends libzip-dev unzip git \
+	&& docker-php-ext-install mysqli pdo pdo_mysql zip \
+	&& rm -rf /var/lib/apt/lists/*
 
 # Activer le module rewrite
 RUN a2enmod rewrite
-
-# Installer Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 
 # Copier les fichiers du projet
 COPY . /var/www/html/
 WORKDIR /var/www/html/
 
-# Installer les dépendances PHP (hors PHPMailer)
-RUN composer install --no-dev
-
-# Copier le fichier .env
-COPY .env /var/www/html/.env
-
-# Donner les permissions
+# Permissions pour Apache
 RUN chown -R www-data:www-data /var/www/html
 
 # Exposer le port Apache
