@@ -88,7 +88,6 @@ class UserSession {
             $this->email = $row['email'];
             $this->nom = $row['nom'];
             $this->prenom = $row['prenom'];
-            // ... autres champs
             return $row;
         }
         
