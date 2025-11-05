@@ -30,6 +30,7 @@ switch ($method) {
         }
         echo json_encode($result);
         break;
+
     case 'POST':
         $data = json_decode(file_get_contents('php://input'), true);
         if (empty($data['trajet_id']) || empty($data['utilisateur_id']) || empty($data['motif']) || empty($data['statut'])) {
@@ -50,11 +51,12 @@ switch ($method) {
                 'prenom' => $userModel->prenom,
                 'nom' => $userModel->nom
             ];
-            // À adapter : email de l'admin ou équipe support
+            // email de l'admin ou équipe support
             $adminEmail = 'admin@ecoride.fr';
             sendSignalementCreationNotification($adminEmail, $data, $user);
         }
         break;
+        
     case 'PUT':
         $data = json_decode(file_get_contents('php://input'), true);
         if (empty($data['id']) || empty($data['statut']) || empty($data['employe_id'])) {
