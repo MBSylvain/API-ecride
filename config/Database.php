@@ -1,13 +1,19 @@
 <?php
 class Database {
-    private $host = 'localhost';
-    private $db_name = 'covoiturage_db';
-    private $username = 'root'; 
-    private $password = ''; 
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
     private $conn;
 
     public function connect() {
         $this->conn = null;
+
+        // Récupérer les variables d'environnement
+        $this->host = getenv('DB_HOST') ?: 'localhost';
+        $this->db_name = getenv('DB_NAME') ?: 'covoiturage_db';
+        $this->username = getenv('DB_USER') ?: 'root';
+        $this->password = getenv('DB_PASSWORD') ?: '';
 
         try {
             $this->conn = new PDO(
