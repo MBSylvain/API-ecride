@@ -2,8 +2,8 @@
 class Database {
     private $host = 'localhost';
     private $db_name = 'covoiturage_db';
-    private $username = 'root'; // À changer selon votre configuration
-    private $password = ''; // À changer selon votre configuration
+    private $username = 'root'; 
+    private $password = ''; 
     private $conn;
 
     public function connect() {
