@@ -14,8 +14,8 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin -
 COPY . /var/www/html/
 WORKDIR /var/www/html/
 
-# Installer les dépendances PHP
-RUN composer install
+# Installer les dépendances PHP (hors PHPMailer)
+RUN composer install --no-dev
 
 # Copier le fichier .env
 COPY .env /var/www/html/.env
