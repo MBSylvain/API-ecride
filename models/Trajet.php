@@ -152,7 +152,7 @@ class Trajet {
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
-            return null; // Trajet non trouvé
+            return null; 
         }
         $nombre_places = (int)$row['nombre_places'];
 
@@ -225,7 +225,7 @@ class Trajet {
 
         // Correction pour éviter la double exécution et récupérer l'ID généré
         if ($stmt->execute()) {
-            $this->trajet_id = $this->conn->lastInsertId(); // Récupère l'ID généré
+            $this->trajet_id = $this->conn->lastInsertId(); 
             return true;
         }
         return false;
@@ -283,7 +283,7 @@ class Trajet {
         return $stmt->execute();
     }
 
-    // Method to get utilisateur_id by trajet_id
+    // Methode pour obtenir l'utilisateur_id par trajet_id
     public function getUtilisateurIdByTrajetId($trajet_id) {
         $query = "SELECT utilisateur_id FROM " . $this->table . " WHERE trajet_id = :trajet_id LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -295,7 +295,7 @@ class Trajet {
             return $row;
         }
 
-        return null; // Return null if no user is found for the given trajet_id
+        return null; 
     }
 }
 ?>
