@@ -17,8 +17,6 @@ $utilisateur = new Utilisateur($db);
 $method = $_SERVER['REQUEST_METHOD'];
 
 
-
-
 // Fonction utilitaire pour nettoyer les entrées
 function sanitize($input) {
     return htmlspecialchars(strip_tags(trim($input)));
@@ -207,8 +205,6 @@ function deleteCurrentUser($utilisateur) {
     exit;
 }
 
-// === ROUTEUR PRINCIPAL CORRIGÉ ===
-
 // Récupération des données selon la méthode
 $data = null;
 $action = null;
@@ -217,7 +213,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     if (stripos($contentType, "application/json") !== false) {
         $json = file_get_contents("php://input");
         $tmp = json_decode($json);
-        // Si le front envoie { data: { ... } } (cas axios), on prend $tmp->data si présent
         if (isset($tmp->data) && is_object($tmp->data)) {
             $data = $tmp->data;
         } else {
@@ -231,10 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     } else {
         $data = (object)$_POST;
     }
-    // Associer la valeur de action à celle de la méthode si présente
-    //if (isset($data->action) && !empty($data->action)) {
-     //   $method = strtoupper($data->action);
-    //}
+    
 }
 
 switch ($method) {
@@ -252,7 +244,6 @@ switch ($method) {
         }
         if (isset($data->action) && $data->action === 'register') {
             registerUser($data, $utilisateur);
-            // crédit de bienvenue géré dans registerUser
             // nettoyer la session pour éviter les conflits
             session_destroy();
             // redémarrer la session avec les données de l'utilisateur
@@ -268,6 +259,11 @@ switch ($method) {
                 $credit->utilisateur_id = $_SESSION['utilisateur_id'];
                 $credit->montant = 30; // Montant du crédit de bienvenue
                 $credit->createCredit();
+                // Envoyer une notification par email
+                require_once '../models/Utilisateur.php';
+                $utilisateurModel = new Utilisateur($utilisateur->conn);
+                $utilisateurModel->envoyerEmailBienvenue($utilisateur->utilisateur_id);
+                
             }
 
         } else if (isset($data->action) && $data->action === 'logout') {
