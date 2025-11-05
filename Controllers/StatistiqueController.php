@@ -2,7 +2,6 @@
 require_once '../config/session.php';
 include_once '../config/Database.php';
 
-// Contrôleur Statistique optimisé pour React (un endpoint par thème/stat)
 $database = new Database();
 $db = $database->connect();
 if (!$db) {
@@ -68,7 +67,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Trajets ---
+            // Trajets
             if ($action === 'trajets') {
                 $stats = [];
                 // Total trajets
@@ -113,7 +112,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Crédits ---
+            // Crédits
             if ($action === 'credits') {
                 $stats = [];
                 // Total crédits gagnés
@@ -132,7 +131,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Avis ---
+            // Avis 
             if ($action === 'avis') {
                 $stats = [];
                 // Avis par statut
@@ -151,7 +150,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Employés ---
+            // Employés
             if ($action === 'employes') {
                 $stats = [];
                 // Total employés
@@ -184,7 +183,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Statistiques Voitures ---
+            //  Statistiques Voitures 
             if ($action === 'voitures') {
                 $stats = [];
                 // Nombre total de voitures
@@ -215,7 +214,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Statistiques Réservations ---
+            //  Statistiques Réservations 
             if ($action === 'reservations') {
                 $stats = [];
                 // Nombre total de réservations
@@ -252,7 +251,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Répartition véhicules (pour PieChart) ---
+            //  Répartition véhicules (pour PieChart)
             if ($action === 'vehicules_repartition') {
                 $query = "SELECT energie, COUNT(*) as total FROM voiture GROUP BY energie";
                 $stmt = $db->prepare($query);
@@ -262,7 +261,7 @@ switch ($method) {
                 exit;
             }
 
-            // --- Action non reconnue ---
+            // Action non reconnue 
             http_response_code(400);
             echo json_encode(['message' => 'Action statistique non reconnue']);
             exit;
