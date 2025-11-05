@@ -8,7 +8,6 @@ include_once '../Controllers/checkAuth.php';
 include_once '../models/Voiture.php';
 include_once '../utils/NotificationMails.php';
 
-// Initialize database connection
 $database = new Database();
 $db = $database->connect();
 if (!$db) {
@@ -25,7 +24,6 @@ verifyAuth();
 $method = $_SERVER['REQUEST_METHOD'];
 // Récupération des données JSON ou POST selon le format
 $data =json_decode(file_get_contents("php://input"));
-// Récupérer l'action soit de $_POST soit de $data (JSON)
 $utilisateur_id = null;
 if (isset($_SESSION['utilisateur_id'])) {
     $utilisateur_id = $_SESSION['utilisateur_id'];
@@ -39,17 +37,13 @@ if (isset($_POST['action'])) {
     $action = $data->action;
 };
 
-// Déterminer la méthode appropriée
 if ($method == 'POST' && $action == 'PUT') {
-    // Si la méthode est PUT, on la change
     $method = 'PUT';
 } elseif ($method == 'POST' && $action == 'DELETE') {
-    // Si la méthode est DELETE, on la change
     $method = 'DELETE';
 } else {
     $method = $_SERVER['REQUEST_METHOD'];
 };
-// Si l'utilisateur n'est pas authentifié, on renvoie une erreur 401
 if (!$utilisateur_id && ($method == 'POST' || $method == 'PUT')) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Non authentifié']);
@@ -171,7 +165,6 @@ break;
     case 'POST':
         $data = json_decode(file_get_contents("php://input"));
         
-        // Validate required fields
         $required = ['modele', 'immatriculation', 'energie', 'nombre_places'];
         foreach ($required as $field) {
             if (empty($data->$field)) {
@@ -181,7 +174,6 @@ break;
             }
         }
 
-        // Assign all values
         $voiture->marque = $data->marque ?? null;
         $voiture->modele = $data->modele;
         $voiture->immatriculation = $data->immatriculation;
@@ -200,7 +192,6 @@ break;
             exit;
         }
 
-        // Create the car and handle the relationship
         if ($voiture->create()) {
             // Notification création voiture
             require_once '../utils/NotificationMails.php';
@@ -228,14 +219,12 @@ break;
     case 'PUT':
         $data = json_decode(file_get_contents("php://input"));
 
-        //var_dump($data);
         if (!$data) {
             http_response_code(400);
             echo json_encode(array('message' => 'Données invalides'));
             break;
         }
 
-    // Assigner les valeurs dans le même ordre et avec les mêmes colonnes que dans le modèle Voiture
     $voiture->voiture_id = isset($data->voiture_id) ? $data->voiture_id : (isset($_GET['id']) ? $_GET['id'] : null);
     $voiture->marque = $data->marque ?? null;
     $voiture->modele = $data->modele ?? null;
@@ -300,7 +289,6 @@ break;
 
     case 'DELETE':
     
-    // Pour DELETE, on lit les données de la requête
     $data = json_decode(file_get_contents("php://input"));
 
     $voiture_id = $data->voiture_id ?? null;
@@ -324,7 +312,6 @@ break;
         exit;
     }
 
-    // Tentative de suppression
     if ($voiture->delete()) {
         // Notification suppression voiture
         require_once '../utils/NotificationMails.php';
