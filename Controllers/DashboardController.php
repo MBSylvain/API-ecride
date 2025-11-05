@@ -2,7 +2,6 @@
 require_once '../config/session.php';
 include_once '../Controllers/checkAuth.php';
 
-
 // Vérifiez l'authentification
 verifyAuth();
 
@@ -30,7 +29,6 @@ try {
                 echo json_encode(['error' => 'Données invalides']);
                 break;
             }
-            // ... logique de mise à jour
             break;
 
         default:
