@@ -1,39 +1,6 @@
 <?php
 class Reservation {
-    // Récupérer toutes les réservations (tableau associatif)
-    public function readAll() {
-        $query = 'SELECT * FROM ' . $this->table;
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // Récupérer une réservation par son ID
-    public function readOne($id) {
-        $query = 'SELECT * FROM ' . $this->table . ' WHERE reservation_id = ? LIMIT 1';
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([$id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ? $row : null;
-    }
-    /**
-     * Récupérer les emails des participants d'un trajet (hors réservations annulées)
-     */
-    public function getParticipantsEmails($trajet_id) {
-        $query = 'SELECT u.email
-                  FROM ' . $this->table . ' r
-                  JOIN utilisateurs u ON r.utilisateur_id = u.utilisateur_id
-                  WHERE r.trajet_id = ? AND r.statut != "annulée"';
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute([$trajet_id]);
-        $emails = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            if (!empty($row['email'])) {
-                $emails[] = $row['email'];
-            }
-        }
-        return $emails;
-    }
+    
     // Connexion et table
     private $conn;
     private $table = 'reservations';
@@ -55,9 +22,7 @@ class Reservation {
         $this->conn = $db;
     }
 
-    /**
-     * Lire les réservations d'un utilisateur
-     */
+    
     public function read_by_user($user_id) {
         $query = 'SELECT r.*, t.ville_depart, t.ville_arrivee, t.date_depart, t.heure_depart
                   FROM ' . $this->table . ' r
@@ -71,9 +36,7 @@ class Reservation {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Méthode originale - convertie pour retourner un objet JSON
-     */
+    
     public function read_by_user_original() {
         $query = 'SELECT r.*, t.ville_depart, t.ville_arrivee, t.date_depart 
                   FROM ' . $this->table . ' r
@@ -87,9 +50,7 @@ class Reservation {
         return json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
     
-    /**
-     * Vérifier si un utilisateur a déjà réservé un trajet spécifique
-     */
+   
     public function read_by_user_and_trajet($user_id, $trajet_id) {
         $query = 'SELECT * FROM ' . $this->table . ' 
                   WHERE utilisateur_id = ? AND trajet_id = ? AND statut != "annulé"';
@@ -100,9 +61,7 @@ class Reservation {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Lire les réservations pour un trajet
-     */
+   
     public function read_by_trajet() {
         $query = 'SELECT * FROM ' . $this->table . ' 
                   WHERE trajet_id = ?';
@@ -112,9 +71,41 @@ class Reservation {
         return $stmt;
     }
 
-    /**
-     * Lire une réservation par son ID
-     */
+
+    // Récupérer toutes les réservations (tableau associatif)
+    public function readAll() {
+        $query = 'SELECT * FROM ' . $this->table;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Récupérer une réservation par son ID
+    public function readOne($id) {
+        $query = 'SELECT * FROM ' . $this->table . ' WHERE reservation_id = ? LIMIT 1';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? $row : null;
+    }
+    
+    public function getParticipantsEmails($trajet_id) {
+        $query = 'SELECT u.email
+                  FROM ' . $this->table . ' r
+                  JOIN utilisateurs u ON r.utilisateur_id = u.utilisateur_id
+                  WHERE r.trajet_id = ? AND r.statut != "annulée"';
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$trajet_id]);
+        $emails = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($row['email'])) {
+                $emails[] = $row['email'];
+            }
+        }
+        return $emails;
+    }
+
+    
     public function read_single() {
         $query = 'SELECT * FROM ' . $this->table . ' WHERE reservation_id = ?';
         
@@ -151,9 +142,7 @@ class Reservation {
         return $stmt;   
     }
 
-    /**
-     * Créer une réservation
-     */
+    
     public function create() {
         $query = 'INSERT INTO ' . $this->table . ' 
                   SET 
@@ -192,9 +181,7 @@ class Reservation {
         return false;
     }
 
-    /**
-     * Mettre à jour une réservation (statut)
-     */
+    
     public function update() {
         $query = 'UPDATE ' . $this->table . ' 
                   SET 
@@ -221,9 +208,7 @@ class Reservation {
         return false;
     }
 
-    /**
-     * Mettre à jour uniquement le statut d'une réservation
-     */
+    
     public function update_status() {
         $query = 'UPDATE ' . $this->table . '
                   SET statut = :statut
@@ -248,9 +233,7 @@ class Reservation {
         return false;
     }
 
-    /**
-     * Supprimer une réservation
-     */
+    
     public function delete() {
         $query = 'DELETE FROM ' . $this->table . ' WHERE reservation_id = ?';
         $stmt = $this->conn->prepare($query);
