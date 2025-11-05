@@ -98,7 +98,7 @@ public function read_single() {
     $stmt->bindParam(1, $this->utilisateur_id);
     
     if($stmt->execute()) {
-        return $stmt; // Return PDOStatement, not array
+        return $stmt; 
     }
     
     return false;
@@ -125,9 +125,8 @@ public function read_single() {
     $stmt->bindParam(':nombre_places', $this->nombre_places);
     $stmt->bindParam(':utilisateur_id', $this->utilisateur_id);
 
-   // Exécution avec gestion d'erreur améliorée
     if ($stmt->execute()) {
-        $this->voiture_id = $this->conn->lastInsertId(); // Récupère l'ID généré
+        $this->voiture_id = $this->conn->lastInsertId();
         return true;
     } else {
         error_log("Erreur SQL: " . print_r($stmt->errorInfo(), true));
@@ -160,7 +159,7 @@ public function read_single() {
     $stmt->bindParam(':photo_url', $this->photo_url);
     $stmt->bindParam(':description', $this->description);
     $stmt->bindParam(':nombre_places', $this->nombre_places);
-    $stmt->bindParam(':utilisateur_id', $this->utilisateur_id); // ← AJOUT IMPORTANT !
+    $stmt->bindParam(':utilisateur_id', $this->utilisateur_id); 
     $stmt->bindParam(':voiture_id', $this->voiture_id);
 
         // Ajout de logs pour déboguer la méthode update
