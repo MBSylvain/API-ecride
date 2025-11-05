@@ -1,19 +1,27 @@
-# Utiliser une image officielle PHP avec Apache
+
 FROM php:8.1-apache
 
-# Installer les extensions PHP nécessaires (ajoutez celles dont vous avez besoin)
+# Installer les extensions PHP
 RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Installer Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Activer le module rewrite
+RUN a2enmod rewrite
 
-# Copier le projet et installer les dépendances
+# Installer Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+
+# Copier les fichiers du projet
 COPY . /var/www/html/
 WORKDIR /var/www/html/
+
+# Installer les dépendances PHP
 RUN composer install
 
-# Donner les permissions nécessaires
+# Copier le fichier .env
+COPY .env /var/www/html/.env
+
+# Donner les permissions
 RUN chown -R www-data:www-data /var/www/html
 
-# Exposer le port 80 pour le serveur Apache
+# Exposer le port Apache
 EXPOSE 80
