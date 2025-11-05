@@ -25,10 +25,8 @@ class Utilisateur {
     public function __construct($db) {
         $this->conn = $db;
     }
-
    
 
-    // Dans read_by_email()
     public function read_by_email() {
         $query = "SELECT * FROM utilisateurs WHERE email = :email LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -47,7 +45,6 @@ class Utilisateur {
         $this->date_naissance = $row['date_naissance'];
         $this->pseudo = $row['pseudo'];
         $this->role = $row['role'];
-        // ... autres attributs
         return true;
     }
     
@@ -145,9 +142,9 @@ class Utilisateur {
         }
     }
     public function read() {
-        $query = "SELECT utilisateur_id, nom, prenom, email, FROM utilisateurs";
+        $query = "SELECT utilisateur_id, nom, prenom, email FROM utilisateurs";
         $stmt = $this->conn->query($query);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retourne directement un array
+        return $stmt->fetchAll(PDO::FETCH_ASSOC); 
     }
 
     public function update() {
@@ -173,7 +170,7 @@ class Utilisateur {
             
             $stmt = $this->conn->prepare($query);
             
-            // Bind des paramètres
+            // liaison des paramètres
             $stmt->bindParam(':nom', $this->nom);
             $stmt->bindParam(':prenom', $this->prenom);
             $stmt->bindParam(':email', $this->email);
@@ -217,8 +214,7 @@ class Utilisateur {
     }
 
     public function login() {
-        
-     
+          
         $query = 'SELECT * FROM ' . $this->table . ' WHERE email = :email LIMIT 1';
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':email', $this->email);
@@ -234,15 +230,15 @@ class Utilisateur {
             $this->role = $row['role'];
             //stockage de l'ID de l'utilisateur dans la session
             $_SESSION['utilisateur_id'] = $row['utilisateur_id'];
-        $_SESSION['nom'] = $row['nom'];
-        $_SESSION['prenom'] = $row['prenom'];
-        $_SESSION['email'] = $row['email'];
-        $_SESSION['pseudo'] = $row['pseudo'];
-        $_SESSION['telephone'] = $row['telephone'];
-        $_SESSION['adresse'] = $row['adresse'];
-        $_SESSION['date_naissance'] = $row['date_naissance'];
-        $_SESSION['role'] = $row['role']; // Stocker le rôle dans la session
-             // Important: Sauvegarder la session
+            $_SESSION['nom'] = $row['nom'];
+            $_SESSION['prenom'] = $row['prenom'];
+            $_SESSION['email'] = $row['email'];
+            $_SESSION['pseudo'] = $row['pseudo'];
+            $_SESSION['telephone'] = $row['telephone'];
+            $_SESSION['adresse'] = $row['adresse'];
+            $_SESSION['date_naissance'] = $row['date_naissance'];
+            $_SESSION['role'] = $row['role']; 
+        // Stocker le rôle dans la session
         session_write_close();
             return true;
         }
