@@ -54,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		   // Appelle la fonction de notification avec les bonnes infos
 		   sendCreditOffer($user['email'], $user, $credit->montant);
 		} else {
-			// Échec
 			error_log("Erreur lors de l'envoi du mail de crédit offert à utilisateur_id: {$credit->utilisateur_id}");
 		}
 
