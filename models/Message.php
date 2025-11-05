@@ -3,7 +3,6 @@ class Message {
     private $conn;
     private $table = 'messages';
 
-    // Propriétés
     public $message_id;
     public $expediteur_id;
     public $destinataire_id;
