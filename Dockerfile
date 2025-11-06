@@ -10,6 +10,7 @@ RUN apt-get update \
 RUN a2enmod rewrite
 
 # Copier les fichiers du projet
+COPY . /var/www/html/
 WORKDIR /var/www/html/
 
 # Permissions pour Apache
