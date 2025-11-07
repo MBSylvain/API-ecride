@@ -2,10 +2,10 @@
 require_once (__DIR__ . '/../config/session.php');
 
 // Inclusions
-include_once '../config/Database.php';
-include_once '../models/Utilisateur.php';
-include_once '../Controllers/checkAuth.php';
-include_once '../models/Trajet.php';
+include_once (__DIR__ . '/../config/Database.php');
+include_once (__DIR__ . '/../models/Utilisateur.php');
+include_once (__DIR__ . '/../Controllers/checkAuth.php');
+include_once (__DIR__ . '/../models/Trajet.php');
 
 
 
