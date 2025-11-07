@@ -10,14 +10,17 @@ class Database {
         $this->conn = null;
 
         // Récupérer les variables d'environnement
-        $this->host = getenv('DB_HOST') ?: 'localhost';
-        $this->db_name = getenv('DB_NAME') ?: 'covoiturage_db';
-        $this->username = getenv('DB_USER') ?: 'root';
-        $this->password = getenv('DB_PASSWORD') ?: '';
+
+    $this->host = getenv('DB_HOST') ?: 'localhost';
+    $this->db_name = getenv('DB_NAME') ?: 'covoiturage_db';
+    $this->username = getenv('DB_USER') ?: 'root';
+    $this->password = getenv('DB_PASSWORD') ?: '';
+    $port = getenv('DB_PORT') ?: '3306';
+
 
         try {
             $this->conn = new PDO(
-    'mysql:host=' . $this->host . ';port=3306;dbname=' . $this->db_name,
+                'mysql:host=' . $this->host . ';port=' . $port . ';dbname=' . $this->db_name,
                 $this->username,
                 $this->password
             );
