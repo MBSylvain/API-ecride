@@ -1,14 +1,12 @@
 <?php
-require_once 'config/Database.php';
-require_once 'models/Trajet.php';
-
-$db = (new Database())->connect();
-$trajetModel = new Trajet($db);
-
-// Remplacez 1 par l'id du trajet à tester
-$trajet_id = 1;
-$places_restantes = $trajetModel->getPlacesRestantes($trajet_id);
-
-echo "Places restantes pour le trajet $trajet_id : ";
-var_dump($places_restantes);
+try {
+    $pdo = new PDO(
+        'mysql:host=interchange.proxy.rlwy.net;port=57160;dbname=railway',
+        'root',
+        'xegHLqIRdqENmjgkdgnpQHLCVccvCEmu'
+    );
+    echo "Connexion réussie !";
+} catch (PDOException $e) {
+    echo "Erreur : " . $e->getMessage();
+}
 ?>
