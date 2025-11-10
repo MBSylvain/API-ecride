@@ -36,7 +36,7 @@ function verifyAuth() {
 }
 
 // === GESTION DES REQUÊTES OPTIONS (CORS Pré-vol) ===
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // logique pour vérifier l'authentification
 // Si on appelle directement ce fichier en GET, on retourne le statut d'authentification
 $current_file = basename($_SERVER['PHP_SELF']);
-if ($current_file === 'checkAuth.php' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+if ($current_file === 'checkAuth.php' && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
     
     // Appliquer la vérification d'authentification
     if (isset($_SESSION['utilisateur_id'])) {
@@ -68,7 +68,7 @@ if ($current_file === 'checkAuth.php' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // Déconnexion de l 'utilisateur
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Vérifier le content-type pour gérer JSON et form-data
     $contentType = isset($_SERVER["CONTENT_TYPE"]) ? trim($_SERVER["CONTENT_TYPE"]) : '';
     
