@@ -1,6 +1,6 @@
 <?php
 // En-têtes CORS pour l'accès API depuis le front-end
-header("Access-Control-Allow-Origin: https://ecoride-hazel.vercel.app/");
+header("Access-Control-Allow-Origin: https://ecoride-b54ju839x-sylvains-projects-15c39aad.vercel.app/");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
