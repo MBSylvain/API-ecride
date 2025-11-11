@@ -33,7 +33,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
         'lifetime' => 24 * 60 * 60, // 24 heures
         'path' => '/',
-    'domain' => isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '',
+        // Ne pas mettre 'domain' ici pour éviter les problèmes cross-domain
         'secure' => isset($_SERVER['HTTPS']),
         'httponly' => true,
         'samesite' => 'Lax'
