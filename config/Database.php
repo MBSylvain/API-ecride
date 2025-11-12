@@ -26,12 +26,14 @@ class Database {
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->exec('set names utf8');
-            //echo 'Connexion réussie à la base de données.';
+            
+            echo 'Connexion réussie à la base de données.';
         } catch(PDOException $e) {
             echo 'Erreur de connexion : ' . $e->getMessage();
         }
 
         return $this->conn;
+        echo 'Retour de la connexion à la base de données.';
     }
 }
 ?>
