@@ -16,7 +16,7 @@ class Database {
     $this->username = getenv('DB_USER') ?: 'root';
     $this->password = getenv('DB_PASSWORD') ?: '';
     $port = getenv('DB_PORT') ?: '3306';
-    echo 'Tentative de connexion à la base de données...';
+    //echo 'Tentative de connexion à la base de données...';
 
         try {
             $this->conn = new PDO(
