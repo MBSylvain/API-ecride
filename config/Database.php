@@ -16,7 +16,7 @@ class Database {
     $this->username = getenv('DB_USER') ?: 'root';
     $this->password = getenv('DB_PASSWORD') ?: '';
     $port = getenv('DB_PORT') ?: '3306';
-
+    echo 'Tentative de connexion à la base de données...';
 
         try {
             $this->conn = new PDO(
@@ -26,8 +26,8 @@ class Database {
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->exec('set names utf8');
-            
-            echo 'Connexion réussie à la base de données.';
+
+            //echo 'Connexion réussie à la base de données.';
         } catch(PDOException $e) {
             echo 'Erreur de connexion : ' . $e->getMessage();
         }
