@@ -249,3 +249,10 @@ function sendVoitureNotification($to, $user, $voiture, $action) {
     $body = "Bonjour {$user['prenom']},<br>La voiture <b>{$voiture->modele} ({$voiture->immatriculation})</b> a été $label sur votre compte EcoRide.";
     return sendMail($to, $subject, $body);
 }
+
+// Notification de bienvenue la création de compte
+function envoyerEmailBienvenue($to, $user) {
+    $subject = "Bienvenue sur EcoRide !";
+    $body = "Bonjour {$user['prenom']},<br>Bienvenue sur EcoRide ! Nous sommes ravis de vous compter parmi nos utilisateurs. Profitez de nos services de covoiturage écologique et économique.";
+    return sendMail($to, $subject, $body);
+}

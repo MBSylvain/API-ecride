@@ -6,6 +6,7 @@ $allowed_origins = [
     "https://ecoride-git-master-sylvains-projects-15c39aad.vercel.app",
     "https://ecoride-b54ju839x-sylvains-projects-15c39aad.vercel.app",
     "http://localhost:3000",
+    "https://ecoride-navplvv1w-sylvains-projects-15c39aad.vercel.app",
     "http://localhost:5173"
 ];
 
@@ -36,7 +37,7 @@ if (session_status() === PHP_SESSION_NONE) {
         // Ne pas mettre 'domain' ici pour éviter les problèmes cross-domain
         'secure' => isset($_SERVER['HTTPS']),
         'httponly' => true,
-        'samesite' => 'Lax'
+        'samesite' => 'none' // Permet les requêtes cross-site
     ]);
     session_start();
 }

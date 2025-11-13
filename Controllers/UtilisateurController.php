@@ -6,6 +6,7 @@ include_once '../config/Database.php';
 include_once '../models/Utilisateur.php';
 include_once '../Controllers/checkAuth.php';
 include_once '../models/Credit.php';
+include_once '../Utils/NotificationMails.php';
 
 
 // Initialisation de la base de données
