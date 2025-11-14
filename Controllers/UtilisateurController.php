@@ -262,8 +262,13 @@ switch ($method) {
                 $credit->createCredit();
                 // Envoyer une notification par email
                 require_once '../models/Utilisateur.php';
-                $utilisateurModel = new Utilisateur($utilisateur->conn);
-                $utilisateurModel->envoyerEmailBienvenue($utilisateur->utilisateur_id);
+                require_once '../Utils/NotificationMails.php';
+                // Préparer les infos utilisateur pour l'email de bienvenue
+                $userBienvenue = [
+                    'prenom' => $utilisateur->prenom,
+                    'nom' => $utilisateur->nom
+                ];
+                envoyerEmailBienvenue($utilisateur->email, $userBienvenue);
                 
             }
 

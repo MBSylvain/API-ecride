@@ -7,6 +7,7 @@ $allowed_origins = [
     "https://ecoride-b54ju839x-sylvains-projects-15c39aad.vercel.app",
     "http://localhost:3000",
     "https://ecoride-navplvv1w-sylvains-projects-15c39aad.vercel.app",
+    "https://ecoride-90kx8i5kx-sylvains-projects-15c39aad.vercel.app",
     "http://localhost:5173"
 ];
 
