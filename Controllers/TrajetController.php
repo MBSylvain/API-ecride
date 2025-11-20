@@ -188,20 +188,34 @@ case 'SEARCH':
         $trajet->utilisateur_id = $utilisateur_id;
         $trajet->voiture_id = $data->voiture_id;
 
-        if ($trajet->create()) {
-            http_response_code(201);
+        // Vérification du solde de crédits avant création
+        include_once '../models/Credit.php';
+        $credit = new Credit($db);
+        $solde = $credit->getSoldeCredits($utilisateur_id);
+        if ($solde < $trajet->prix) {
+            http_response_code(400);
             echo json_encode([
-                'message' => 'Trajet créé avec succès',
-                'trajet_id' => $trajet->trajet_id
+                'message' => 'Solde de crédits insuffisant pour créer ce trajet',
+                'solde' => $solde,
+                'prix_trajet' => $trajet->prix
             ]);
-            // Mouvement débit/crédit pour création de trajet
-            include_once '../models/Credit.php';
-            $credit = new Credit($db);
+            exit;
+        }
+
+        // Création du trajet si solde suffisant
+        if ($trajet->create()) {
+            // Débit du crédit
             $credit->utilisateur_id = $utilisateur_id;
             $credit->montant = -$trajet->prix;
             $credit->type_operation = 'Création de trajet';
             $credit->commentaire = 'Débit pour création de trajet ID ' . $trajet->trajet_id;
             $credit->debitCredit($utilisateur_id, $credit->montant, $credit->type_operation, $credit->commentaire);
+
+            http_response_code(201);
+            echo json_encode([
+                'message' => 'Trajet créé avec succès',
+                'trajet_id' => $trajet->trajet_id
+            ]);
             // Notification création trajet
             require_once '../utils/NotificationMails.php';
             $utilisateurModel = new Utilisateur($db);
