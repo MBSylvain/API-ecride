@@ -209,31 +209,38 @@ case 'SEARCH':
             $credit->montant = -$trajet->prix;
             $credit->type_operation = 'Création de trajet';
             $credit->commentaire = 'Débit pour création de trajet ID ' . $trajet->trajet_id;
-            $credit->debitCredit($utilisateur_id, $credit->montant, $credit->type_operation, $credit->commentaire);
+            $debitOk = $credit->debitCredit($utilisateur_id, $credit->montant, $credit->type_operation, $credit->commentaire);
 
-            http_response_code(201);
-            echo json_encode([
-                'message' => 'Trajet créé avec succès',
-                'trajet_id' => $trajet->trajet_id
-            ]);
-            // Notification création trajet
-            require_once '../utils/NotificationMails.php';
-            $utilisateurModel = new Utilisateur($db);
-            $utilisateurModel->utilisateur_id = $utilisateur_id;
-            $result = $utilisateurModel->read_single();
-            $user = null;
-            if ($result === true) {
-                $user = [
-                    'email' => $utilisateurModel->email,
-                    'prenom' => $utilisateurModel->prenom,
-                    'nom' => $utilisateurModel->nom
-                ];
-            }
-            if ($user && isset($user['email'])) {
-                sendTrajetCreationConfirmation($user['email'], [
-                    'ville_depart' => $trajet->ville_depart,
-                    'ville_arrivee' => $trajet->ville_arrivee
-                ], $user);
+            if ($debitOk) {
+                http_response_code(201);
+                echo json_encode([
+                    'message' => 'Trajet créé avec succès',
+                    'trajet_id' => $trajet->trajet_id
+                ]);
+                // Notification création trajet
+                require_once '../utils/NotificationMails.php';
+                $utilisateurModel = new Utilisateur($db);
+                $utilisateurModel->utilisateur_id = $utilisateur_id;
+                $result = $utilisateurModel->read_single();
+                $user = null;
+                if ($result === true) {
+                    $user = [
+                        'email' => $utilisateurModel->email,
+                        'prenom' => $utilisateurModel->prenom,
+                        'nom' => $utilisateurModel->nom
+                    ];
+                }
+                if ($user && isset($user['email'])) {
+                    sendTrajetCreationConfirmation($user['email'], [
+                        'ville_depart' => $trajet->ville_depart,
+                        'ville_arrivee' => $trajet->ville_arrivee
+                    ], $user);
+                }
+            } else {
+                // Si le débit échoue, on pourrait supprimer le trajet créé pour garder la cohérence
+                $trajet->delete();
+                http_response_code(500);
+                echo json_encode(['message' => 'Échec du débit de crédit, trajet annulé']);
             }
         } else {
             http_response_code(500);
